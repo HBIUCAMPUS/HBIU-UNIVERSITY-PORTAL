@@ -4,21 +4,31 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
+import os
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+
 def get_db():
     """Get database connection - supports both SQLite and PostgreSQL"""
     database_url = os.environ.get('DATABASE_URL')
     
     if database_url:
-        # PostgreSQL (Production - Render)
+        # PostgreSQL (Production - Render) using psycopg3
         try:
-            conn = psycopg2.connect(database_url, sslmode='require')
+            import psycopg
+            conn = psycopg.connect(database_url, sslmode='require')
             return conn
-        except Exception as e:
-            print(f"PostgreSQL connection error: {e}")
-            # Fallback to SQLite if PostgreSQL fails
-            conn = sqlite3.connect('hbi_campus.db')
-            conn.row_factory = sqlite3.Row
-            return conn
+        except ImportError:
+            # Fallback to psycopg2 if psycopg3 not available
+            try:
+                import psycopg2
+                conn = psycopg2.connect(database_url, sslmode='require')
+                return conn
+            except:
+                # Final fallback to SQLite
+                conn = sqlite3.connect('hbi_campus.db')
+                conn.row_factory = sqlite3.Row
+                return conn
     else:
         # SQLite (Development - Local)
         conn = sqlite3.connect('hbi_campus.db')
