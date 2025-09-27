@@ -8,7 +8,8 @@ from functools import wraps
 from datetime import datetime, timedelta
 import pickle
 import json
-
+with app.app_context():
+    db.init_db()
 app = Flask(__name__)
 
 # -------------------
