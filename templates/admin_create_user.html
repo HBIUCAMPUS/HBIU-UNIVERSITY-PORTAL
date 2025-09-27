@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card card-accent p-4">
+            <h4 class="mb-3">Create New User</h4>
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">User Type</label>
+                    <select class="form-select" name="user_type" required>
+                        <option value="student">Student</option>
+                        <option value="lecturer">Lecturer</option>
+                    </select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Full Name</label>
+                    <input class="form-control" name="name" required>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Email</label>
+                    <input class="form-control" name="email" type="email" required>
+                </div>
+                <div class="mb-2" id="admissionField">
+                    <label class="form-label">Admission Number</label>
+                    <input class="form-control" name="admission_no">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Password</label>
+                    <input class="form-control" name="password" type="password" required>
+                </div>
+                <button class="btn btn-gold w-100">Create User</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelector('[name="user_type"]').addEventListener('change', function() {
+    const admissionField = document.getElementById('admissionField');
+    admissionField.style.display = this.value === 'student' ? 'block' : 'none';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card card-accent">
+                <div class="accent-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="gold-text mb-1">Welcome back, {{ session.user_name }}! 👋</h2>
+                            <p class="muted mb-0">Here's your academic overview</p>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-success fs-6">Student Portal</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats Row -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card card-accent h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-2">
+                        <i class="fas fa-book-open fa-2x text-primary me-3"></i>
+                        <h3 class="mb-0">{{ registered|length if registered else 0 }}</h3>
+                    </div>
+                    <h6 class="card-title">Registered Units</h6>
+                    <p class="muted small">Courses you're enrolled in</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card card-accent h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-2">
+                        <i class="fas fa-chart-line fa-2x text-success me-3"></i>
+                        <h3 class="mb-0">{{ results|length if results else 0 }}</h3>
+                    </div>
+                    <h6 class="card-title">Results Available</h6>
+                    <p class="muted small">Grades published</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card card-accent h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-2">
+                        <i class="fas fa-tasks fa-2x text-warning me-3"></i>
+                        <h3 class="mb-0">{{ activities|length if activities else 0 }}</h3>
+                    </div>
+                    <h6 class="card-title">Upcoming Activities</h6>
+                    <p class="muted small">Assignments & deadlines</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card card-accent h-100">
+                <div class="card-body text-center">
+                    <div class="d-flex align-items-center justify-content-center mb-2">
+                        <i class="fas fa-calendar-alt fa-2x text-info me-3"></i>
+                        <h3 class="mb-0">{{ session.user_id }}</h3>
+                    </div>
+                    <h6 class="card-title">Student ID</h6>
+                    <p class="muted small">Your academic identity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Registered Units Card -->
+            <div class="card card-accent mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bookmark text-primary me-2"></i>My Registered Units
+                    </h5>
+                    <a href="{{ url_for('view_units') }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i>Add More
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if registered %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Unit Code</th>
+                                        <th>Unit Title</th>
+                                        <th>Lecturer</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for u in registered %}
+                                    <tr>
+                                        <td><strong>{{ u.code }}</strong></td>
+                                        <td>{{ u.title }}</td>
+                                        <td>{{ u.lecturer or 'TBA' }}</td>
+                                        <td>
+                                            <a href="{{ url_for('unit_detail', unit_id=u.unit_id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i>View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-book fa-3x text-muted mb-3"></i>
+                            <h5>No units registered yet</h5>
+                            <p class="muted">Start your academic journey by registering for units</p>
+                            <a href="{{ url_for('view_units') }}" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Browse Available Units
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="card card-accent mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar text-success me-2"></i>Academic Results
+                    </h5>
+                    <a href="{{ url_for('student_results') }}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-list me-1"></i>View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if results %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Unit</th>
+                                        <th>Score</th>
+                                        <th>Remarks</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for r in results %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ r.code }}</strong><br>
+                                            <small class="muted">{{ r.title }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge {% if r.score and r.score|float >= 50 %}bg-success{% else %}bg-warning{% endif %} fs-6">
+                                                {{ r.score or 'N/A' }}
+                                            </span>
+                                        </td>
+                                        <td>{{ r.remarks or '—' }}</td>
+                                        <td>
+                                            {% if r.score %}
+                                                <span class="badge bg-light text-dark">Graded</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Pending</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                            <h5>No results available yet</h5>
+                            <p class="muted">Your results will appear here once published by lecturers</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Upcoming Activities Card -->
+            <div class="card card-accent mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-calendar-check text-warning me-2"></i>Upcoming Activities
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if activities %}
+                        <div class="list-group list-group-flush">
+                            {% for a in activities %}
+                            <div class="list-group-item border-0 px-0 py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ a.title }}</h6>
+                                        {% if a.unit_code %}
+                                            <small class="muted">{{ a.unit_code }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <span class="badge bg-warning text-dark ms-2">
+                                        {{ a.due_date }}
+                                    </span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
+                            <p class="muted mb-0">No upcoming activities</p>
+                            <small class="muted">Check back later for new assignments</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="card card-accent mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-bolt text-info me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a class="btn btn-outline-primary" href="{{ url_for('view_units') }}">
+                            <i class="fas fa-search me-2"></i>Browse Units
+                        </a>
+                        <a class="btn btn-outline-success" href="{{ url_for('student_results') }}">
+                            <i class="fas fa-chart-bar me-2"></i>View All Results
+                        </a>
+                        <a class="btn btn-outline-info" href="{{ url_for('update_profile') }}">
+                            <i class="fas fa-user-edit me-2"></i>Update Profile
+                        </a>
+                        <a class="btn btn-outline-warning" href="{{ url_for('change_password') }}">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+       
+        </div>
+    </div>
+</div>
+
+<style>
+    .card-accent {
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        transition: transform 0.2s ease-in-out;
+    }
+    .card-accent:hover {
+        transform: translateY(-2px);
+    }
+    .accent-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+    }
+    .text-gold {
+        color: #c59d2b;
+    }
+    .progress-bar {
+        font-weight: 600;
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(197, 157, 43, 0.1);
+    }
+</style>
+{% endblock %}

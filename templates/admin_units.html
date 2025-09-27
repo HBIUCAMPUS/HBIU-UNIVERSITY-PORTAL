@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="gold-text">Manage Units</h3>
+    <a href="{{ url_for('admin_create_unit') }}" class="btn btn-gold">Add New Unit</a>
+</div>
+
+<div class="card card-accent p-4">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Title</th>
+                    <th>Lecturer</th>
+                    <th>Students</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in units %}
+                <tr>
+                    <td>{{ unit.code }}</td>
+                    <td>{{ unit.title }}</td>
+                    <td>{{ unit.lecturer_name or 'Not assigned' }}</td>
+                    <td>{{ unit.student_count }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin_delete_unit', unit_id=unit.id) }}" 
+                              onsubmit="return confirm('Are you sure you want to delete this unit?')">
+                            <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

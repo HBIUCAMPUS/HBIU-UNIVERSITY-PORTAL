@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h4>Results Entry</h4>
+<div class="card p-3 mb-3">
+  <h6>Registered Students</h6>
+  {% if students %}
+    <table class="table">
+      <thead><tr><th>Admission</th><th>Name</th><th>Score</th><th>Remarks</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for s in students %}
+          <tr>
+            <td>{{ s.admission_no }}</td>
+            <td>{{ s.name }}</td>
+            <td>{{ s.score or '' }}</td>
+            <td>{{ s.remarks or '' }}</td>
+            <td>
+              <form method="post" class="d-flex gap-2">
+                <input type="hidden" name="student_id" value="{{ s.id }}">
+                <input class="form-control form-control-sm" name="score" placeholder="score" style="max-width:120px" required>
+                <input class="form-control form-control-sm" name="remarks" placeholder="remarks" style="max-width:200px">
+                <button class="btn btn-sm btn-gold">Save</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="muted">No students registered for this unit.</p>
+  {% endif %}
+</div>
+{% endblock %}

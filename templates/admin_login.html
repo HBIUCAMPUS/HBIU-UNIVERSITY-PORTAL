@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="text-center mb-4">
+      <img src="/static/images/logo.png" alt="" class="page-logo">
+      <h3 class="gold-text">Admin Login</h3>
+      <p class="muted">Access the administration panel</p>
+    </div>
+    <div class="card card-accent p-4">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('admin_login') }}">
+          <div class="mb-3">
+            <label class="form-label">Admin Email</label>
+            <input class="form-control" name="email" type="email" required placeholder="admin@hbi.edu">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" name="password" required>
+          </div>
+          <button class="btn btn-gold w-100">Login as Admin</button>
+        </form>
+      </div>
+    </div>
+    
+    <div class="text-center mt-3">
+    </div>
+  </div>
+</div>
+{% endblock %}

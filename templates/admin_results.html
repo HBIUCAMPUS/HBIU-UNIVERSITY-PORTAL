@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="gold-text">Manage Results</h3>
+    <div>
+        <a href="{{ url_for('admin_results_add') }}" class="btn btn-gold me-2">Add New Result</a>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+<div class="card card-accent p-4">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Admission No</th>
+                    <th>Unit</th>
+                    <th>Score</th>
+                    <th>Remarks</th>
+                    <th>Lecturer</th>
+                    <th>Recorded</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ result.student_name }}</td>
+                    <td>{{ result.admission_no }}</td>
+                    <td>{{ result.unit_code }} - {{ result.unit_title }}</td>
+                    <td>
+                        <span class="badge {% if result.score >= 70 %}bg-success{% elif result.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                            {{ result.score or 'N/A' }}
+                        </span>
+                    </td>
+                    <td>{{ result.remarks or '-' }}</td>
+                    <td>{{ result.lecturer_name or 'N/A' }}</td>
+                    <td>{{ result.recorded_at[:10] }}</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="{{ url_for('admin_results_edit', result_id=result.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                            <form method="post" action="{{ url_for('admin_results_delete', result_id=result.id) }}" 
+                                  onsubmit="return confirm('Delete this result permanently?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

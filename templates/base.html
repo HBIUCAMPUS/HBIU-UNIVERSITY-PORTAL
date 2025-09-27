@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>HBI Virtual Campus</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+      :root { 
+        --gold: #c59d2b; 
+        --dark: #0f1b2d; 
+        --light: #fff; 
+        --gold-light: #d4af37;
+        --gold-dark: #b8860b;
+      }
+      body { background: #f5f7fa; color: var(--dark); }
+      .brand { color: var(--dark); font-weight:700; }
+      .btn-gold { background: var(--dark); color: white; border-radius: 10px; padding: .6rem 1.2rem;}
+      .card-accent { border-radius: 12px; box-shadow: 0 6px 20px rgba(16,24,40,0.08); }
+      .accent-header { background: linear-gradient(135deg, #fff, rgba(197,157,43,0.08)); padding: 1.2rem; border-radius: 12px 12px 0 0;}
+      .muted { color: #6b7280; }
+      .gold-text { color: var(--gold); font-weight:600; }
+      .navbar-logo { height: 40px; margin-right: 10px; }
+      .page-logo { height: 80px; margin-bottom: 20px; }
+      
+      /* Gold Navbar Styles */
+      .navbar-gold {
+        background: linear-gradient(135deg, var(--gold-light), var(--gold-dark)) !important;
+        box-shadow: 0 2px 15px rgba(197, 157, 43, 0.3) !important;
+        border-bottom: 3px solid var(--gold-dark);
+      }
+      .navbar-gold .navbar-brand {
+        color: var(--dark) !important;
+        font-weight: 700;
+        transition: transform 0.3s ease;
+      }
+      .navbar-gold .navbar-brand:hover {
+        transform: scale(1.05);
+      }
+      .navbar-gold .nav-link {
+        color: var(--dark) !important;
+        font-weight: 500;
+        padding: 0.5rem 1rem;
+        margin: 0 0.2rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+      }
+      .navbar-gold .nav-link:hover {
+        background-color: rgba(15, 27, 45, 0.1);
+        color: var(--dark) !important;
+        transform: translateY(-2px);
+      }
+      .navbar-gold .navbar-toggler {
+        border-color: var(--dark);
+      }
+      .navbar-gold .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2815, 27, 45, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg py-3 navbar-gold">
+      <div class="container">
+        <a class="navbar-brand brand" href="{{ url_for('home') }}">
+          <img src="/static/images/logo.png" alt="HBI Logo" width="80px" height="60px" class="d-inline-block align-top">
+          <span class="ms-2 d-none d-md-inline">HBI Virtual Campus</span>
+        </a>
+        
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            {% if session.user_type == 'admin' %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a></li>
+            {% elif session.user_type == 'lecturer' %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('lecturer_dashboard') }}">Lecturer Dashboard</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('jotform_forms') }}">JotForm</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('google_classroom_dashboard') }}">Classroom</a></li>
+            {% elif session.user_type == 'student' %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('student_dashboard') }}">Student Dashboard</a></li>
+            {% endif %}
+            
+            {% if session.user_id %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('update_profile') }}">Profile</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Logout</a></li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('admin_login') }}">Admin</a></li>
+              <li class="nav-item"><a class="nav-link" href="{{ url_for('login') }}">Login</a></li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container my-5">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="alert alert-{{ 'warning' if cat=='warning' else cat }} alert-dismissible fade show" role="alert">
+              {{ msg }} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

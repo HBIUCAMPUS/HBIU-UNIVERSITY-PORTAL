@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center mb-4">
+    <img src="/static/images/logo.png" alt="" class="page-logo">
+    <h3 class="gold-text">Admin Dashboard</h3>
+    <p class="muted">Manage the entire HBI Virtual Campus system</p>
+</div>
+
+<div class="row">
+    <!-- Quick Stats -->
+    <div class="col-md-3 mb-3">
+        <div class="card card-accent text-center p-3">
+            <h5 class="gold-text">Students</h5>
+            <h3>{{ stats.students_count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card card-accent text-center p-3">
+            <h5 class="gold-text">Lecturers</h5>
+            <h3>{{ stats.lecturers_count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card card-accent text-center p-3">
+            <h5 class="gold-text">Units</h5>
+            <h3>{{ stats.units_count }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card card-accent text-center p-3">
+            <h5 class="gold-text">Registrations</h5>
+            <h3>{{ stats.registrations_count }}</h3>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Quick Actions -->
+    <div class="col-md-12 mb-4">
+        <div class="card card-accent p-4">
+            <h5 class="gold-text mb-3">Quick Actions</h5>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('admin_students') }}" class="btn btn-gold">Manage Students</a>
+                <a href="{{ url_for('admin_lecturers') }}" class="btn btn-gold">Manage Lecturers</a>
+                <a href="{{ url_for('admin_units') }}" class="btn btn-gold">Manage Units</a>
+                <a href="{{ url_for('admin_create_user') }}" class="btn btn-gold">Create New User</a>
+                <a href="{{ url_for('admin_create_unit') }}" class="btn btn-gold">Create New Unit</a>
+                <a href="{{ url_for('admin_results') }}" class="btn btn-gold">Manage Results</a>
+                <a href="{{ url_for('google_classroom_dashboard') }}" class="btn btn-gold">Google Classroom</a>
+                <a href="{{ url_for('jotform_forms') }}" class="btn btn-gold">Forms</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Activity -->
+    <div class="col-md-6 mb-3">
+        <div class="card card-accent p-3">
+            <h5 class="gold-text">Recent Activity</h5>
+            {% if stats.recent_activity %}
+                <div class="list-group">
+                    {% for activity in stats.recent_activity %}
+                    <div class="list-group-item">
+                        <strong>{{ activity.action }}</strong>
+                        <br>
+                        <small class="muted">{{ activity.description }} | {{ activity.timestamp }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="muted">No recent activity.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-3">
+        <div class="card card-accent p-3">
+            <h5 class="gold-text">System Status</h5>
+            <div class="list-group">
+                <div class="list-group-item text-success">
+                    <i class="fas fa-check-circle"></i> Database Connected
+                </div>
+                <div class="list-group-item text-success">
+                    <i class="fas fa-check-circle"></i> Authentication Active
+                </div>
+                <div class="list-group-item text-info">
+                    <i class="fas fa-info-circle"></i> {{ stats.students_count }} Students Registered
+                </div>
+                <div class="list-group-item text-info">
+                    <i class="fas fa-info-circle"></i> {{ stats.lecturers_count }} Lecturers Active
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card card-accent p-4">
+            <h4 class="mb-3">Edit Result</h4>
+            <form method="post">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Student</label>
+                        <input type="text" class="form-control" value="{{ result.student_name }} ({{ result.admission_no }})" disabled>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Unit</label>
+                        <input type="text" class="form-control" value="{{ result.unit_code }} - {{ result.unit_title }}" disabled>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Score</label>
+                        <input type="number" class="form-control" name="score" value="{{ result.score }}" min="0" max="100" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Remarks</label>
+                        <input type="text" class="form-control" name="remarks" value="{{ result.remarks or '' }}" placeholder="Excellent, Good, Fair, etc.">
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-gold">Update Result</button>
+                    <a href="{{ url_for('admin_results') }}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

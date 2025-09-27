@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="gold-text">500 - Server Error</h1>
+  <p class="muted">Something went wrong on our end. Please try again later.</p>
+  <a href="{{ url_for('home') }}" class="btn btn-gold">Return Home</a>
+</div>
+{% endblock %}

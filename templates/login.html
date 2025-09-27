@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="text-center mb-4">
+      <img src="/static/images/logo.png" alt="" class="page-logo">
+    </div>
+    <div class="card card-accent p-4">
+      <div class="text-center accent-header mb-3">
+        <h3>Welcome to HBI University</h3>
+        <p class="muted">Sign in to continue</p>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('login') }}">
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input class="form-control" name="email" required placeholder="you@example.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input class="form-control" type="password" name="password" required>
+          </div>
+          <button class="btn btn-gold w-100">Sign in</button>
+        </form>
+
+        <hr>
+        <div class="text-center">
+          <small class="muted">Need an account?</small>
+          <div class="mt-2">
+            <a href="{{ url_for('register_student') }}" class="btn btn-outline-secondary btn-sm">Student Sign up</a>
+            <a href="{{ url_for('register_lecturer') }}" class="btn btn-outline-secondary btn-sm">Lecturer Sign up</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

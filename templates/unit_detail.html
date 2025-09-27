@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+<h4>Unit: {{ unit.code }} - {{ unit.title }}</h4>
+<p class="muted">Lecturer: {{ unit.lecturer_name or 'TBA' }}</p>
+
+<div class="card p-3 mb-3">
+  <h6>Resources</h6>
+  {% if resources %}
+    <ul>
+    {% for r in resources %}
+      <li><a href="{{ url_for('uploaded_file', filename=r.filename) }}">{{ r.title }}</a> <small class="muted">({{ r.uploaded_at }})</small></li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No resources yet.</p>
+  {% endif %}
+</div>
+
+{% if students %}
+<div class="card p-3">
+  <h6>Registered Students</h6>
+  <ul>
+  {% for s in students %}
+    <li>{{ s.admission_no }} - {{ s.name }} ({{ s.email }})</li>
+  {% endfor %}
+  </ul>
+</div>
+{% endif %}
+{% endblock %}

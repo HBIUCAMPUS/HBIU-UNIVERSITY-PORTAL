@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h4>Your Results</h4>
+<div class="card p-3">
+  {% if results %}
+    <ul>
+      {% for r in results %}
+        <li>{{ r.code }} - {{ r.title }} : {{ r.score or 'N/A' }} {% if r.remarks %} - {{ r.remarks }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">No results recorded yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

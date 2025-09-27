@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Classroom Integration - HBI University</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('home') }}"></a>
+                <i class="fas fa-university"></i> HBI University
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('admin_dashboard') if 'admin_id' in session else url_for('lecturer_dashboard') }}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-link" href="{{ url_for('google_classroom_dashboard') }}">
+                    <i class="fab fa-google"></i> Google Classroom
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2>
+                        <i class="fab fa-google text-danger"></i>
+                        Google Classroom Integration
+                    </h2>
+                    {% if not auth_url %}
+                    <span class="badge bg-success">
+                        <i class="fas fa-check"></i> Connected
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-muted">Sync your university courses with Google Classroom</p>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        {% if auth_url %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h4><i class="fas fa-exclamation-triangle"></i> Connect Google Account</h4>
+                    <p>You need to connect your Google account to use Classroom features.</p>
+                    <a href="{{ auth_url }}" class="btn btn-primary">
+                        <i class="fab fa-google"></i> Connect Google Account
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <!-- University Units -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5><i class="fas fa-book"></i> University Units</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if units %}
+                        <div class="list-group">
+                            {% for unit in units %}
+                            <div class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">{{ unit.code }} - {{ unit.title }}</h6>
+                                        <small class="text-muted">
+                                            Lecturer: {{ unit.lecturer_name or 'N/A' }}
+                                        </small>
+                                    </div>
+                                    <div>
+                                        {% if not auth_url %}
+                                        <a href="{{ url_for('sync_unit_to_classroom', unit_id=unit.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="fab fa-google"></i> Sync
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No units available for syncing.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Google Classroom Courses -->
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5><i class="fab fa-google"></i> Google Classroom Courses</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if not auth_url %}
+                            {% if courses %}
+                            <div class="list-group">
+                                {% for course in courses %}
+                                <div class="list-group-item">
+                                    <h6 class="mb-1">{{ course.name }}</h6>
+                                    <small class="text-muted">
+                                        Section: {{ course.section or 'No section' }}<br>
+                                        Status: {{ course.courseState }}
+                                    </small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-muted">No Google Classroom courses found.</p>
+                            {% endif %}
+                        {% else %}
+                        <p class="text-muted">Connect your Google account to view courses.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Status -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-sync-alt"></i> Sync Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <div class="border rounded p-3">
+                                    <i class="fas fa-book fa-2x text-primary"></i>
+                                    <h5 class="mt-2">Courses</h5>
+                                    <p class="mb-0">Sync university units to Classroom</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="border rounded p-3">
+                                    <i class="fas fa-users fa-2x text-success"></i>
+                                    <h5 class="mt-2">Students</h5>
+                                    <p class="mb-0">Automatically enroll students</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="border rounded p-3">
+                                    <i class="fas fa-tasks fa-2x text-warning"></i>
+                                    <h5 class="mt-2">Assignments</h5>
+                                    <p class="mb-0">Sync activities as assignments</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

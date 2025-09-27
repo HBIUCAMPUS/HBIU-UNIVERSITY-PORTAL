@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<h4>Available Units</h4>
+<div class="card p-3 mb-3">
+  <form method="post" class="row g-2">
+    <div class="col-auto"><input class="form-control" name="code" placeholder="Enter unit code to register" required></div>
+    <div class="col-auto"><button class="btn btn-gold">Register</button></div>
+  </form>
+</div>
+
+<div class="row">
+  {% for u in units %}
+    <div class="col-md-6 mb-2">
+      <div class="card p-3">
+        <h6>{{ u.code }} - {{ u.title }}</h6>
+        <small class="muted">Lecturer: {{ u.lecturer or 'TBA' }}</small>
+        <div class="mt-2">
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('unit_detail', unit_id=u.id) }}">Open</a>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

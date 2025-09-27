@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card card-accent p-4">
+            <h4 class="mb-3">Create New Unit</h4>
+            <form method="post">
+                <div class="mb-2">
+                    <label class="form-label">Unit Code</label>
+                    <input class="form-control" name="code" required placeholder="e.g., CS101">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Unit Title</label>
+                    <input class="form-control" name="title" required placeholder="e.g., Introduction to Programming">
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Lecturer</label>
+                    <select class="form-select" name="lecturer_id" required>
+                        <option value="">Select Lecturer</option>
+                        {% for lecturer in lecturers %}
+                        <option value="{{ lecturer.id }}">{{ lecturer.name }} ({{ lecturer.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button class="btn btn-gold w-100">Create Unit</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
