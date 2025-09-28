@@ -11,21 +11,10 @@
         <div class="mt-2">
           <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('unit_detail', unit_id=u.id) }}">View Details</a>
           
-          <!-- Register button for this specific unit with registration check -->
-          {% set student_units = db.get_student_units(session['user_id']) %}
-          {% set is_registered = false %}
-          {% for su in student_units %}
-            {% if su.code == u.code %}
-              {% set is_registered = true %}
-            {% endif %}
-          {% endfor %}
-
+          <!-- Register button for this specific unit -->
           <form method="post" action="{{ url_for('register_unit') }}" class="d-inline">
             <input type="hidden" name="code" value="{{ u.code }}">
-            <button type="submit" class="btn btn-sm {% if is_registered %}btn-outline-success{% else %}btn-gold{% endif %}" 
-                    {% if is_registered %}disabled title="Already registered"{% endif %}>
-              {% if is_registered %}✓ Registered{% else %}Register{% endif %}
-            </button>
+            <button type="submit" class="btn btn-gold btn-sm">Register</button>
           </form>
         </div>
       </div>
