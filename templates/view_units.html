@@ -1,24 +1,48 @@
 {% extends "base.html" %}
 {% block content %}
 <h4>Available Units</h4>
-<div class="card p-3 mb-3">
-  <form method="post" class="row g-2">
-    <div class="col-auto"><input class="form-control" name="code" placeholder="Enter unit code to register" required></div>
-    <div class="col-auto"><button class="btn btn-gold">Register</button></div>
-  </form>
-</div>
 
 <div class="row">
   {% for u in units %}
-    <div class="col-md-6 mb-2">
+    <div class="col-md-6 mb-3">
       <div class="card p-3">
         <h6>{{ u.code }} - {{ u.title }}</h6>
         <small class="muted">Lecturer: {{ u.lecturer or 'TBA' }}</small>
         <div class="mt-2">
-          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('unit_detail', unit_id=u.id) }}">Open</a>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('unit_detail', unit_id=u.id) }}">View Details</a>
+          
+          <!-- Register button for this specific unit with registration check -->
+          {% set student_units = db.get_student_units(session['user_id']) %}
+          {% set is_registered = false %}
+          {% for su in student_units %}
+            {% if su.code == u.code %}
+              {% set is_registered = true %}
+            {% endif %}
+          {% endfor %}
+
+          <form method="post" action="{{ url_for('register_unit') }}" class="d-inline">
+            <input type="hidden" name="code" value="{{ u.code }}">
+            <button type="submit" class="btn btn-sm {% if is_registered %}btn-outline-success{% else %}btn-gold{% endif %}" 
+                    {% if is_registered %}disabled title="Already registered"{% endif %}>
+              {% if is_registered %}✓ Registered{% else %}Register{% endif %}
+            </button>
+          </form>
         </div>
       </div>
     </div>
   {% endfor %}
+</div>
+
+<!-- Keep the manual code entry as a fallback -->
+<div class="card p-3 mt-3">
+  <h6>Register with Unit Code</h6>
+  <form method="post" action="{{ url_for('register_unit') }}" class="row g-2">
+    <div class="col-auto">
+      <input class="form-control" name="code" placeholder="Enter unit code manually" required>
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-gold">Register</button>
+    </div>
+  </form>
 </div>
 {% endblock %}
