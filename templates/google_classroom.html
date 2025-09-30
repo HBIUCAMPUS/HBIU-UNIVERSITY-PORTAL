@@ -6,11 +6,37 @@
     <title>Google Classroom Integration - HBI University</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .sync-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        .sync-btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+        .sync-btn.loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            border-right-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('home') }}"></a>
+            <a class="navbar-brand" href="{{ url_for('home') }}">
                 <i class="fas fa-university"></i> HBI University
             </a>
             <div class="navbar-nav ms-auto">
@@ -58,6 +84,18 @@
         </div>
         {% endif %}
 
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'info' }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
         <div class="row">
             <!-- University Units -->
             <div class="col-md-6">
@@ -70,17 +108,22 @@
                         <div class="list-group">
                             {% for unit in units %}
                             <div class="list-group-item">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
                                         <h6 class="mb-1">{{ unit.code }} - {{ unit.title }}</h6>
+                                        <small class="text-muted d-block">
+                                            <strong>Lecturer:</strong> {{ unit.lecturer_name or 'Not assigned' }}
+                                        </small>
                                         <small class="text-muted">
-                                            Lecturer: {{ unit.lecturer_name or 'N/A' }}
+                                            <strong>Students:</strong> {{ unit.student_count if unit.student_count is defined else 0 }}
                                         </small>
                                     </div>
-                                    <div>
+                                    <div class="ms-3">
                                         {% if not auth_url %}
                                         <a href="{{ url_for('sync_unit_to_classroom', unit_id=unit.id) }}" 
-                                           class="btn btn-sm btn-outline-primary">
+                                           class="btn btn-sm btn-outline-primary sync-btn"
+                                           data-unit-id="{{ unit.id }}"
+                                           data-unit-code="{{ unit.code }}">
                                             <i class="fab fa-google"></i> Sync
                                         </a>
                                         {% endif %}
@@ -104,23 +147,40 @@
                     </div>
                     <div class="card-body">
                         {% if not auth_url %}
-                            {% if courses %}
+                            {% if courses and courses|length > 0 %}
                             <div class="list-group">
                                 {% for course in courses %}
                                 <div class="list-group-item">
-                                    <h6 class="mb-1">{{ course.name }}</h6>
+                                    <h6 class="mb-1">{{ course.name or course.title or 'Unnamed Course' }}</h6>
+                                    <small class="text-muted d-block">
+                                        <strong>Section:</strong> {{ course.section or 'No section' }}
+                                    </small>
+                                    {% if course.description %}
+                                    <small class="text-muted d-block">
+                                        <strong>Description:</strong> {{ course.description[:100] }}{% if course.description|length > 100 %}...{% endif %}
+                                    </small>
+                                    {% endif %}
                                     <small class="text-muted">
-                                        Section: {{ course.section or 'No section' }}<br>
-                                        Status: {{ course.courseState }}
+                                        <strong>Status:</strong> 
+                                        <span class="badge bg-{{ 'success' if course.courseState == 'ACTIVE' else 'warning' if course.courseState == 'ARCHIVED' else 'secondary' }}">
+                                            {{ course.courseState or 'UNKNOWN' }}
+                                        </span>
                                     </small>
                                 </div>
                                 {% endfor %}
                             </div>
                             {% else %}
-                            <p class="text-muted">No Google Classroom courses found.</p>
+                            <div class="text-center py-4">
+                                <i class="fab fa-google fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No Google Classroom courses found.</p>
+                                <p class="text-muted small">Sync university units to create courses in Google Classroom.</p>
+                            </div>
                             {% endif %}
                         {% else %}
-                        <p class="text-muted">Connect your Google account to view courses.</p>
+                        <div class="text-center py-4">
+                            <i class="fab fa-google fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Connect your Google account to view courses.</p>
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -141,6 +201,7 @@
                                     <i class="fas fa-book fa-2x text-primary"></i>
                                     <h5 class="mt-2">Courses</h5>
                                     <p class="mb-0">Sync university units to Classroom</p>
+                                    <small class="text-muted">{{ units|length if units else 0 }} units available</small>
                                 </div>
                             </div>
                             <div class="col-md-4 text-center">
@@ -148,6 +209,7 @@
                                     <i class="fas fa-users fa-2x text-success"></i>
                                     <h5 class="mt-2">Students</h5>
                                     <p class="mb-0">Automatically enroll students</p>
+                                    <small class="text-muted">Coming soon</small>
                                 </div>
                             </div>
                             <div class="col-md-4 text-center">
@@ -155,6 +217,7 @@
                                     <i class="fas fa-tasks fa-2x text-warning"></i>
                                     <h5 class="mt-2">Assignments</h5>
                                     <p class="mb-0">Sync activities as assignments</p>
+                                    <small class="text-muted">Coming soon</small>
                                 </div>
                             </div>
                         </div>
@@ -165,5 +228,36 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add loading state to sync buttons
+            document.querySelectorAll('.sync-btn').forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const unitId = this.getAttribute('data-unit-id');
+                    const unitCode = this.getAttribute('data-unit-code');
+                    
+                    // Show loading state
+                    this.classList.add('loading');
+                    this.innerHTML = '<i class="fab fa-google"></i> Syncing';
+                    
+                    console.log(`Initiating sync for unit ${unitCode} (ID: ${unitId})`);
+                    
+                    // Navigate to the sync URL (this will trigger the Flask route)
+                    window.location.href = this.href;
+                });
+            });
+            
+            // Auto-dismiss alerts after 5 seconds
+            setTimeout(() => {
+                const alerts = document.querySelectorAll('.alert');
+                alerts.forEach(alert => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+        });
+    </script>
 </body>
 </html>
