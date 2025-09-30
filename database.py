@@ -444,24 +444,76 @@ def get_all_lecturers():
     finally:
         conn.close()
 
-def get_all_units():
-    """Get all units"""
+def get_all_units_with_details():
+    """Get all units with lecturer details - FIXED VERSION"""
     conn = get_db()
     cursor = conn.cursor()
     
     try:
-        cursor.execute("SELECT * FROM units")
+        # Use the same SQL query but ensure proper data handling
+        if os.environ.get('DATABASE_URL'):
+            # PostgreSQL
+            cursor.execute('''
+                SELECT u.id, u.code, u.title, u.lecturer_id, 
+                       l.name as lecturer_name, l.created_at as lecturer_created,
+                       (SELECT COUNT(*) FROM student_units su WHERE su.unit_id = u.id) as student_count
+                FROM units u 
+                LEFT JOIN lecturers l ON u.lecturer_id = l.id
+                ORDER BY u.created_at DESC
+            ''')
+        else:
+            # SQLite
+            cursor.execute('''
+                SELECT u.id, u.code, u.title, u.lecturer_id, 
+                       l.name as lecturer_name, l.created_at as lecturer_created,
+                       (SELECT COUNT(*) FROM student_units su WHERE su.unit_id = u.id) as student_count
+                FROM units u 
+                LEFT JOIN lecturers l ON u.lecturer_id = l.id
+                ORDER BY u.created_at DESC
+            ''')
+        
         units = []
-        for row in cursor.fetchall():
-            units.append({
-                'id': row[0],
-                'code': row[1],
-                'title': row[2],
-                'lecturer_id': row[3]
-            })
+        rows = cursor.fetchall()
+        
+        for row in rows:
+            if hasattr(row, 'keys'):  # PostgreSQL with RealDictCursor
+                unit_data = dict(row)
+                # Ensure lecturer_name is properly handled
+                lecturer_name = unit_data.get('lecturer_name')
+                if not lecturer_name and unit_data.get('lecturer_id'):
+                    lecturer_name = 'Lecturer ID: ' + str(unit_data['lecturer_id'])
+                elif not lecturer_name:
+                    lecturer_name = 'Not assigned'
+                    
+                units.append({
+                    'id': unit_data['id'],
+                    'code': unit_data['code'],
+                    'title': unit_data['title'],
+                    'lecturer_id': unit_data['lecturer_id'],
+                    'lecturer_name': lecturer_name,
+                    'student_count': unit_data.get('student_count', 0)
+                })
+            else:  # SQLite tuple
+                lecturer_name = row[4] if len(row) > 4 and row[4] else None
+                if not lecturer_name and row[3]:  # row[3] is lecturer_id
+                    lecturer_name = 'Lecturer ID: ' + str(row[3])
+                elif not lecturer_name:
+                    lecturer_name = 'Not assigned'
+                    
+                units.append({
+                    'id': row[0],
+                    'code': row[1],
+                    'title': row[2],
+                    'lecturer_id': row[3],
+                    'lecturer_name': lecturer_name,
+                    'student_count': row[6] if len(row) > 6 else 0
+                })
+        
+        print(f"DEBUG: Found {len(units)} units with details")
         return units
+        
     except Exception as e:
-        print(f"Error getting units: {e}")
+        print(f"Error getting units with details: {e}")
         return []
     finally:
         conn.close()
