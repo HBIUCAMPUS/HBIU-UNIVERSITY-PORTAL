@@ -647,8 +647,9 @@ def google_connect():
 
 @app.route('/sync-unit/<int:unit_id>')
 def sync_unit_to_classroom(unit_id):
-    """Sync a unit to Google Classroom"""
+    """Sync a unit to Google Classroom - ENHANCED FEEDBACK"""
     if 'admin_id' not in session and 'lecturer_id' not in session:
+        flash('Please log in to sync units', 'error')
         return redirect(url_for('login'))
     
     unit = db.get_unit_by_id(unit_id)
@@ -656,7 +657,34 @@ def sync_unit_to_classroom(unit_id):
         flash('Unit not found', 'error')
         return redirect(url_for('google_classroom_dashboard'))
     
-    flash(f'Unit "{unit["code"]}" sync feature coming soon!', 'info')
+    try:
+        # Get additional unit details for better feedback
+        units_with_details = db.get_all_units_with_details()
+        unit_detail = next((u for u in units_with_details if u['id'] == unit_id), None)
+        
+        if unit_detail:
+            lecturer_name = unit_detail.get('lecturer_name', 'Not assigned')
+            student_count = unit_detail.get('student_count', 0)
+            
+            # Enhanced flash message with more details
+            flash(
+                f'Sync initiated for "{unit["code"]} - {unit["title"]}"! '
+                f'(Lecturer: {lecturer_name}, Students: {student_count}) - '
+                f'Feature coming soon!', 
+                'info'
+            )
+        else:
+            # Fallback to basic message if details not available
+            flash(f'Unit "{unit["code"]}" sync feature coming soon!', 'info')
+            
+        # Log the sync attempt for debugging
+        print(f"SYNC ATTEMPT: Unit {unit_id} ({unit['code']}) - User: {session.get('admin_id') or session.get('lecturer_id')}")
+        
+    except Exception as e:
+        # If anything goes wrong, still provide basic functionality
+        print(f"Sync info error (non-critical): {e}")
+        flash(f'Unit "{unit["code"]}" sync feature coming soon!', 'info')
+    
     return redirect(url_for('google_classroom_dashboard'))
 
 # -------------------
