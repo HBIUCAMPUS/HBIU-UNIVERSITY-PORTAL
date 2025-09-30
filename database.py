@@ -444,18 +444,32 @@ def get_all_lecturers():
     finally:
         conn.close()
 def get_all_units_with_details():
-    """Get all units with lecturer details - SIMPLE FIX"""
+    """Get all units with proper lecturer names"""
     conn = get_db()
     cursor = conn.cursor()
     
     try:
-        # Simple query focusing on correct lecturer name
-        cursor.execute('''
-            SELECT u.id, u.code, u.title, u.lecturer_id, l.name
-            FROM units u 
-            LEFT JOIN lecturers l ON u.lecturer_id = l.id
-            ORDER BY u.created_at DESC
-        ''')
+        # Simple and clear query
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                SELECT 
+                    u.id, u.code, u.title, u.lecturer_id,
+                    l.name as lecturer_name,
+                    (SELECT COUNT(*) FROM student_units su WHERE su.unit_id = u.id) as student_count
+                FROM units u 
+                LEFT JOIN lecturers l ON u.lecturer_id = l.id
+                ORDER BY u.code
+            ''')
+        else:
+            cursor.execute('''
+                SELECT 
+                    u.id, u.code, u.title, u.lecturer_id,
+                    l.name as lecturer_name,
+                    (SELECT COUNT(*) FROM student_units su WHERE su.unit_id = u.id) as student_count
+                FROM units u 
+                LEFT JOIN lecturers l ON u.lecturer_id = l.id
+                ORDER BY u.code
+            ''')
         
         units = []
         rows = cursor.fetchall()
@@ -463,57 +477,34 @@ def get_all_units_with_details():
         for row in rows:
             if hasattr(row, 'keys'):  # PostgreSQL
                 unit_data = dict(row)
+                # Ensure we get the actual lecturer name
+                lecturer_name = unit_data.get('lecturer_name')
+                
                 units.append({
                     'id': unit_data['id'],
                     'code': unit_data['code'],
                     'title': unit_data['title'],
                     'lecturer_id': unit_data['lecturer_id'],
-                    'lecturer_name': unit_data.get('name', 'Not assigned'),
-                    'student_count': 0  # Temporary fix
+                    'lecturer_name': lecturer_name if lecturer_name else 'Not assigned',
+                    'student_count': unit_data.get('student_count', 0)
                 })
             else:  # SQLite
+                # row[4] should be lecturer_name from the JOIN
+                lecturer_name = row[4] if len(row) > 4 and row[4] else None
+                
                 units.append({
                     'id': row[0],
                     'code': row[1],
                     'title': row[2],
                     'lecturer_id': row[3],
-                    'lecturer_name': row[4] if row[4] else 'Not assigned',
-                    'student_count': 0  # Temporary fix
+                    'lecturer_name': lecturer_name if lecturer_name else 'Not assigned',
+                    'student_count': row[5] if len(row) > 5 else 0
                 })
         
         return units
         
     except Exception as e:
-        print(f"Error getting units with details: {e}")
-        return []
-    finally:
-        conn.close()
-def get_all_units_with_details():
-    """Get all units with lecturer details"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute('''
-            SELECT u.*, l.name as lecturer_name, 
-                   (SELECT COUNT(*) FROM student_units su WHERE su.unit_id = u.id) as student_count
-            FROM units u 
-            LEFT JOIN lecturers l ON u.lecturer_id = l.id
-            ORDER BY u.created_at DESC
-        ''')
-        units = []
-        for row in cursor.fetchall():
-            units.append({
-                'id': row[0],
-                'code': row[1],
-                'title': row[2],
-                'lecturer_id': row[3],
-                'lecturer_name': row[4],
-                'student_count': row[5] if len(row) > 5 else 0
-            })
-        return units
-    except Exception as e:
-        print(f"Error getting units with details: {e}")
+        print(f"Error getting units: {e}")
         return []
     finally:
         conn.close()
