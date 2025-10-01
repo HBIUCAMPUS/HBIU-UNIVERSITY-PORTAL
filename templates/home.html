@@ -64,6 +64,62 @@
       </div>
     </div>
   </div>
+
+  <!-- Three Logos Section -->
+  <div class="row mt-5 mb-4">
+    <div class="col-12 text-center">
+      <h3 class="gold-text mb-4">Quick Access</h3>
+      <div class="row justify-content-center">
+        <!-- Bookstore Logo 1 -->
+        <div class="col-md-4 col-sm-6 mb-4">
+          <a href="https://www.hbiutextbooks.com/" class="text-decoration-none">
+            <div class="card border-0 hover-lift">
+              <div class="card-body text-center">
+                <img src="/static/images/bookstore-logo.jpeg" alt="Bookstore" class="img-fluid mb-3" style="max-height: 80px;">
+                <h5 class="card-title gold-text"></h5>
+              </div>
+            </div>
+          </a>
+        </div>
+        
+        <!-- Paysmart Logo -->
+        <div class="col-md-4 col-sm-6 mb-4">
+          <a href="https://hbiupaysmart.com/" class="text-decoration-none">
+            <div class="card border-0 hover-lift">
+              <div class="card-body text-center">
+                <img src="/static/images/paysmart-logo.jpeg" alt="Paysmart" class="img-fluid mb-3" style="max-height: 80px;">
+                <h5 class="card-title gold-text"></h5>
+              </div>
+            </div>
+          </a>
+        </div>
+        
+        <!-- Faculties logo -->
+        <div class="col-md-4 col-sm-6 mb-4">
+          <a href="https://hbiugraduates.com/faculties/" class="text-decoration-none">
+            <div class="card border-0 hover-lift">
+              <div class="card-body text-center">
+                <img src="/static/images/faculties-logo.jpeg" alt="Bookstore" class="img-fluid mb-3" style="max-height: 80px;">
+                <h5 class="card-title gold-text"></h5>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Apply Now Button Section -->
+  <div class="row mt-4 mb-5">
+    <div class="col-12 text-center">
+      <div class="card card-accent p-5">
+        <h3 class="gold-text mb-3">Ready to Start Your Academic Journey?</h3>
+        <a href="https://hbiuapp.com/login?from_url=https://hbiuapp.com/&app_id=68c77eebf67247f1a166cd7f" class="btn btn-gold btn-lg">
+          Apply Now - Get Instant Acceptance →
+        </a>
+      </div>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -76,8 +132,16 @@
 .carousel-item {
     transition: transform 0.6s ease;
 }
+.hover-lift {
+    transition: all 0.3s ease;
+}
+.hover-lift:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
 </style>
 {% endblock %}
+
 <script>
 // Auto-rotate carousel every 5 seconds
 document.addEventListener('DOMContentLoaded', function() {
