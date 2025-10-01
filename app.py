@@ -832,6 +832,41 @@ def admin_create_unit():
     return render_template("admin_create_unit.html", lecturers=lecturers)
 
 # ==================== PASSWORD MANAGEMENT ROUTES ====================
+@app.route('/admin/reset_password', methods=['GET', 'POST'])
+def admin_reset_password():
+    if not is_admin():  # Replace with your admin check logic
+        flash('Access denied. Admin privileges required.', 'error')
+        return redirect(url_for('home'))
+    
+    if request.method == 'POST':
+        user_email = request.form.get('email')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        # Find user
+        user = User.query.filter_by(email=user_email).first()
+        
+        if not user:
+            flash('User not found.', 'error')
+            return redirect(url_for('admin_reset_password'))
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return redirect(url_for('admin_reset_password'))
+        
+        if len(new_password) < 6:
+            flash('Password must be at least 6 characters.', 'error')
+            return redirect(url_for('admin_reset_password'))
+        
+        # Reset password
+        user.password = generate_password_hash(new_password)
+        user.force_password_change = True  # Add this field to your User model
+        db.session.commit()
+        
+        flash(f'Password reset successfully for {user.email}. New password: {new_password}', 'success')
+        return redirect(url_for('admin_reset_password'))
+    
+    return render_template('admin_reset_password.html')
 
 @app.route("/change-password", methods=['GET', 'POST'])
 def change_password():
