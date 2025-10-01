@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 from flask import send_from_directory
 from functools import wraps
 from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
 import pickle
 import json
 app = Flask(__name__)
@@ -833,21 +834,16 @@ def admin_create_unit():
 
 # ==================== PASSWORD MANAGEMENT ROUTES ====================
 @app.route('/admin/reset_password', methods=['GET', 'POST'])
+@admin_required  # Use your existing admin decorator
 def admin_reset_password():
-    if not is_admin():  # Replace with your admin check
-        flash('Access denied. Admin privileges required.', 'error')
-        return redirect(url_for('home'))
-    
     if request.method == 'POST':
         user_email = request.form.get('email')
         new_password = request.form.get('new_password')
         confirm_password = request.form.get('confirm_password')
         
-        # Find user
-        user = User.query.filter_by(email=user_email).first()
-        
-        if not user:
-            flash('User not found.', 'error')
+        # Validate input
+        if not all([user_email, new_password, confirm_password]):
+            flash('Please fill in all fields', 'error')
             return redirect(url_for('admin_reset_password'))
         
         if new_password != confirm_password:
@@ -858,11 +854,40 @@ def admin_reset_password():
             flash('Password must be at least 6 characters.', 'error')
             return redirect(url_for('admin_reset_password'))
         
-        # Reset password (no force change needed)
-        user.password = generate_password_hash(new_password)
-        db.session.commit()
+        # Find user - check both students and lecturers
+        student = db.get_student_by_email(user_email)
+        lecturer = db.get_lecturer_by_email(user_email)
         
-        flash(f'Password reset successfully for {user.email}. New password has been set.', 'success')
+        if not student and not lecturer:
+            flash('User not found.', 'error')
+            return redirect(url_for('admin_reset_password'))
+        
+        # Reset password based on user type
+        try:
+            if student:
+                success = db.update_student_password(student['id'], new_password)
+                user_type = 'student'
+                user_name = student['name']
+            else:
+                success = db.update_lecturer_password(lecturer['id'], new_password)
+                user_type = 'lecturer'
+                user_name = lecturer['name']
+            
+            if success:
+                # Log the admin activity
+                db.log_admin_activity(
+                    session['admin_id'], 
+                    'reset_password', 
+                    f'Reset password for {user_type}: {user_email}'
+                )
+                flash(f'Password reset successfully for {user_name} ({user_email}).', 'success')
+            else:
+                flash('Error resetting password. Please try again.', 'error')
+                
+        except Exception as e:
+            print(f"Password reset error: {e}")
+            flash('Error resetting password. Please try again.', 'error')
+        
         return redirect(url_for('admin_reset_password'))
     
     return render_template('admin_reset_password.html')
