@@ -834,63 +834,96 @@ def admin_create_unit():
 
 # ==================== PASSWORD MANAGEMENT ROUTES ====================
 @app.route('/admin/reset_password', methods=['GET', 'POST'])
-@admin_required  # Use your existing admin decorator
+@admin_required
 def admin_reset_password():
-    if request.method == 'POST':
-        user_email = request.form.get('email')
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-        
-        # Validate input
-        if not all([user_email, new_password, confirm_password]):
-            flash('Please fill in all fields', 'error')
-            return redirect(url_for('admin_reset_password'))
-        
-        if new_password != confirm_password:
-            flash('Passwords do not match.', 'error')
-            return redirect(url_for('admin_reset_password'))
-        
-        if len(new_password) < 6:
-            flash('Password must be at least 6 characters.', 'error')
-            return redirect(url_for('admin_reset_password'))
-        
-        # Find user - check both students and lecturers
-        student = db.get_student_by_email(user_email)
-        lecturer = db.get_lecturer_by_email(user_email)
-        
-        if not student and not lecturer:
-            flash('User not found.', 'error')
-            return redirect(url_for('admin_reset_password'))
-        
-        # Reset password based on user type
-        try:
+    try:
+        if request.method == 'POST':
+            user_email = request.form.get('email')
+            new_password = request.form.get('new_password')
+            confirm_password = request.form.get('confirm_password')
+            
+            print(f"DEBUG: Reset password attempt for {user_email}")
+            
+            # Validate input
+            if not all([user_email, new_password, confirm_password]):
+                flash('Please fill in all fields', 'error')
+                return redirect(url_for('admin_reset_password'))
+            
+            if new_password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return redirect(url_for('admin_reset_password'))
+            
+            if len(new_password) < 6:
+                flash('Password must be at least 6 characters.', 'error')
+                return redirect(url_for('admin_reset_password'))
+            
+            # Find user - use existing database functions
+            student = None
+            lecturer = None
+            
+            # Get all students and lecturers, then filter by email
+            try:
+                all_students = db.get_all_students()
+                student = next((s for s in all_students if s['email'] == user_email), None)
+                print(f"DEBUG: Student lookup result: {student is not None}")
+            except Exception as e:
+                print(f"DEBUG: Student lookup error: {e}")
+            
+            try:
+                all_lecturers = db.get_all_lecturers()
+                lecturer = next((l for l in all_lecturers if l['email'] == user_email), None)
+                print(f"DEBUG: Lecturer lookup result: {lecturer is not None}")
+            except Exception as e:
+                print(f"DEBUG: Lecturer lookup error: {e}")
+            
+            if not student and not lecturer:
+                flash('User not found.', 'error')
+                return redirect(url_for('admin_reset_password'))
+            
+            # Reset password based on user type
+            success = False
+            user_type = ""
+            user_name = ""
+            
             if student:
+                print(f"DEBUG: Attempting to reset student password for ID: {student['id']}")
                 success = db.update_student_password(student['id'], new_password)
                 user_type = 'student'
                 user_name = student['name']
+                print(f"DEBUG: Student password reset result: {success}")
             else:
+                print(f"DEBUG: Attempting to reset lecturer password for ID: {lecturer['id']}")
                 success = db.update_lecturer_password(lecturer['id'], new_password)
                 user_type = 'lecturer'
                 user_name = lecturer['name']
+                print(f"DEBUG: Lecturer password reset result: {success}")
             
             if success:
                 # Log the admin activity
-                db.log_admin_activity(
-                    session['admin_id'], 
-                    'reset_password', 
-                    f'Reset password for {user_type}: {user_email}'
-                )
+                try:
+                    db.log_admin_activity(
+                        session['admin_id'], 
+                        'reset_password', 
+                        f'Reset password for {user_type}: {user_email}'
+                    )
+                    print("DEBUG: Admin activity logged successfully")
+                except Exception as e:
+                    print(f"DEBUG: Error logging admin activity: {e}")
+                
                 flash(f'Password reset successfully for {user_name} ({user_email}).', 'success')
             else:
                 flash('Error resetting password. Please try again.', 'error')
-                
-        except Exception as e:
-            print(f"Password reset error: {e}")
-            flash('Error resetting password. Please try again.', 'error')
+            
+            return redirect(url_for('admin_reset_password'))
         
+        return render_template('admin_reset_password.html')
+        
+    except Exception as e:
+        print(f"CRITICAL ERROR in admin_reset_password: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('Server error occurred. Please check the logs.', 'error')
         return redirect(url_for('admin_reset_password'))
-    
-    return render_template('admin_reset_password.html')
 
 @app.route("/change-password", methods=['GET', 'POST'])
 def change_password():
