@@ -834,7 +834,7 @@ def admin_create_unit():
 # ==================== PASSWORD MANAGEMENT ROUTES ====================
 @app.route('/admin/reset_password', methods=['GET', 'POST'])
 def admin_reset_password():
-    if not is_admin():  # Replace with your admin check logic
+    if not is_admin():  # Replace with your admin check
         flash('Access denied. Admin privileges required.', 'error')
         return redirect(url_for('home'))
     
@@ -858,12 +858,11 @@ def admin_reset_password():
             flash('Password must be at least 6 characters.', 'error')
             return redirect(url_for('admin_reset_password'))
         
-        # Reset password
+        # Reset password (no force change needed)
         user.password = generate_password_hash(new_password)
-        user.force_password_change = True  # Add this field to your User model
         db.session.commit()
         
-        flash(f'Password reset successfully for {user.email}. New password: {new_password}', 'success')
+        flash(f'Password reset successfully for {user.email}. New password has been set.', 'success')
         return redirect(url_for('admin_reset_password'))
     
     return render_template('admin_reset_password.html')
