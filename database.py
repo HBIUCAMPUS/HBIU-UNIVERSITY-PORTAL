@@ -530,6 +530,40 @@ def get_units_by_lecturer(lecturer_id):
         return []
     finally:
         conn.close()
+def get_all_units():
+    """Get all units for students to browse (simple version)"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("SELECT id, code, title, lecturer_id FROM units ORDER BY code")
+        else:
+            cursor.execute("SELECT id, code, title, lecturer_id FROM units ORDER BY code")
+        
+        units = []
+        for row in cursor.fetchall():
+            if hasattr(row, 'keys'):  # PostgreSQL
+                unit_data = dict(row)
+                units.append({
+                    'id': unit_data['id'],
+                    'code': unit_data['code'],
+                    'title': unit_data['title'],
+                    'lecturer_id': unit_data['lecturer_id']
+                })
+            else:  # SQLite
+                units.append({
+                    'id': row[0],
+                    'code': row[1],
+                    'title': row[2],
+                    'lecturer_id': row[3]
+                })
+        
+        return units
+    except Exception as e:
+        print(f"Error getting all units: {e}")
+        return []
+    finally:
+        conn.close()
 
 def create_unit(code, title, lecturer_id):
     """Create a new unit"""
