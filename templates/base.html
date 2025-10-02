@@ -93,6 +93,30 @@
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
       }
       
+      /* Royal Blue Button Styles */
+      .btn-royal-blue { 
+        background: linear-gradient(135deg, var(--royal-blue), var(--royal-blue-dark));
+        color: white !important;
+        border: none;
+        border-radius: 10px;
+        padding: .6rem 1.2rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+        text-decoration: none;
+        display: inline-block;
+      }
+      .btn-royal-blue:hover {
+        background: linear-gradient(135deg, var(--royal-blue-dark), var(--royal-blue));
+        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(30, 58, 138, 0.4);
+      }
+      .btn-royal-blue:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 8px rgba(30, 58, 138, 0.3);
+      }
+      
       /* Mobile responsiveness for navbar */
       @media (max-width: 768px) {
         .navbar-royal-blue .navbar-brand span {
