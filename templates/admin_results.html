@@ -36,7 +36,7 @@
                     </td>
                     <td>{{ result.remarks or '-' }}</td>
                     <td>{{ result.lecturer_name or 'N/A' }}</td>
-                    <td>{{ result.recorded_at[:10] }}</td>
+                    <td>{{ result.created_at[:10] if result.created_at else 'N/A' }}</td>
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ url_for('admin_results_edit', result_id=result.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
