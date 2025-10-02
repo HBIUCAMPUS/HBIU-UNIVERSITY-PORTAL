@@ -115,8 +115,6 @@
                 </span>
             </li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('lecturer_dashboard') }}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('jotform_forms') }}"><i class="fas fa-list"></i> JotForm</a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url_for('google_classroom_dashboard') }}"><i class="fas fa-chalkboard-teacher"></i> Classroom</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('update_profile') }}"><i class="fas fa-user-edit"></i> Profile</a></li>
             <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
           </ul>
@@ -150,18 +148,6 @@
                                 <a href="{{ url_for('create_unit') }}" class="btn btn-primary w-100 h-100 py-3">
                                     <i class="fas fa-plus fa-2x mb-2"></i><br>
                                     Create Unit
-                                </a>
-                            </div>
-                            <div class="col-md-2 col-6">
-                                <a href="{{ url_for('jotform_forms') }}" class="btn btn-success w-100 h-100 py-3">
-                                    <i class="fas fa-list fa-2x mb-2"></i><br>
-                                    JotForm
-                                </a>
-                            </div>
-                            <div class="col-md-2 col-6">
-                                <a href="{{ url_for('google_classroom_dashboard') }}" class="btn btn-warning w-100 h-100 py-3">
-                                    <i class="fas fa-chalkboard-teacher fa-2x mb-2"></i><br>
-                                    Classroom
                                 </a>
                             </div>
                             <div class="col-md-2 col-6">
