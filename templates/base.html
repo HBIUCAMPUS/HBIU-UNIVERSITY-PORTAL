@@ -120,7 +120,29 @@
         color: var(--royal-blue) !important;
         font-weight: 600;
         }
-      
+      .btn-gold { 
+            background: linear-gradient(135deg, var(--gold-light), var(--gold-dark));
+            color: var(--dark) !important;
+            border: none;
+            border-radius: 10px;
+            padding: .6rem 1.2rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(197, 157, 43, 0.3);
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-gold:hover {
+            background: linear-gradient(135deg, var(--gold-dark), var(--gold-light));
+            color: var(--dark) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(197, 157, 43, 0.4);
+        }
+        .btn-gold:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(197, 157, 43, 0.3);
+        }
+              
       /* Mobile responsiveness for navbar */
       @media (max-width: 768px) {
         .navbar-royal-blue .navbar-brand span {
