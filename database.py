@@ -691,6 +691,76 @@ def get_student_results(student_id):
         return []
     finally:
         conn.close()
+def get_all_results():
+    """Get all student results for admin view"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute('''
+                SELECT 
+                    r.id,
+                    s.name as student_name,
+                    s.admission_no,
+                    u.code as unit_code,
+                    u.title as unit_title,
+                    r.score,
+                    r.remarks,
+                    r.created_at
+                FROM results r
+                JOIN students s ON r.student_id = s.id
+                JOIN units u ON r.unit_id = u.id
+                ORDER BY r.created_at DESC
+            ''')
+        else:
+            cursor.execute('''
+                SELECT 
+                    r.id,
+                    s.name as student_name,
+                    s.admission_no,
+                    u.code as unit_code,
+                    u.title as unit_title,
+                    r.score,
+                    r.remarks,
+                    r.created_at
+                FROM results r
+                JOIN students s ON r.student_id = s.id
+                JOIN units u ON r.unit_id = u.id
+                ORDER BY r.created_at DESC
+            ''')
+        
+        results = []
+        for row in cursor.fetchall():
+            if hasattr(row, 'keys'):  # PostgreSQL
+                result_data = dict(row)
+                results.append({
+                    'id': result_data['id'],
+                    'student_name': result_data['student_name'],
+                    'admission_no': result_data['admission_no'],
+                    'unit_code': result_data['unit_code'],
+                    'unit_title': result_data['unit_title'],
+                    'score': result_data['score'],
+                    'remarks': result_data.get('remarks', ''),
+                    'created_at': result_data['created_at']
+                })
+            else:  # SQLite
+                results.append({
+                    'id': row[0],
+                    'student_name': row[1],
+                    'admission_no': row[2],
+                    'unit_code': row[3],
+                    'unit_title': row[4],
+                    'score': row[5],
+                    'remarks': row[6] if len(row) > 6 else '',
+                    'created_at': row[7] if len(row) > 7 else None
+                })
+        
+        return results
+    except Exception as e:
+        print(f"Error getting all results: {e}")
+        return []
+    finally:
+        conn.close()
 
 def get_unit_students(unit_id):
     """Get students registered for a unit"""
