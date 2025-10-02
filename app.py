@@ -1111,58 +1111,6 @@ def admin_logout():
     return redirect(url_for('home'))
     # ... all your existing routes ...
 
-# ======== ADD DEBUG ROUTE HERE ========
-@app.route('/debug-sync/<classroom_id>')
-@admin_required
-def debug_sync(classroom_id):
-    """Debug route to test sync functionality"""
-    try:
-        print(f"DEBUG: Sync attempted for classroom {classroom_id}")
-        print(f"DEBUG: User ID: {session.get('user_id')}")
-        print(f"DEBUG: User Type: {session.get('user_type')}")
-        
-        # Check if credentials exist
-        credentials = db.get_google_credentials(session['user_id'])
-        print(f"DEBUG: Google credentials: {credentials is not None}")
-        
-        return jsonify({
-            'status': 'debug',
-            'classroom_id': classroom_id,
-            'has_credentials': credentials is not None,
-            'user_id': session.get('user_id')
-        })
-        
-    except Exception as e:
-        print(f"DEBUG ERROR: {e}")
-        return jsonify({'error': str(e)})
-
-# ... your existing routes ...
-
-# ======== ADD THESE ROUTES ========
-@app.route('/debug-sync/<classroom_id>')
-@admin_required
-def debug_sync(classroom_id):
-    # ... the debug code above ...
-
-@app.route('/sync-classroom-grades/<classroom_id>')
-@admin_required
-def sync_classroom_grades(classroom_id):
-    """Basic sync route - replace with real implementation later"""
-    try:
-        flash(f'Sync functionality for classroom {classroom_id} is being implemented', 'info')
-        print(f"SYNC ATTEMPT: Classroom {classroom_id} by user {session['user_id']}")
-        
-        # TODO: Add real Google Classroom API integration here
-        
-        return redirect(url_for('lecturer_dashboard'))
-        
-    except Exception as e:
-        print(f"Sync error: {e}")
-        flash('Sync functionality not fully implemented yet', 'error')
-        return redirect(url_for('lecturer_dashboard'))
-# ======== END NEW ROUTES ========
-
-# ... your error handlers ...
 
 # -------------------
 # Error handling
