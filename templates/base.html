@@ -13,57 +13,103 @@
         --light: #fff; 
         --gold-light: #d4af37;
         --gold-dark: #b8860b;
+        --royal-blue: #1e3a8a;
+        --royal-blue-light: #3b82f6;
+        --royal-blue-dark: #1e40af;
       }
       body { background: #f5f7fa; color: var(--dark); }
-      .brand { color: var(--dark); font-weight:700; }
+      .brand { color: white; font-weight:700; }
       .btn-gold { background: var(--dark); color: white; border-radius: 10px; padding: .6rem 1.2rem;}
       .card-accent { border-radius: 12px; box-shadow: 0 6px 20px rgba(16,24,40,0.08); }
       .accent-header { background: linear-gradient(135deg, #fff, rgba(197,157,43,0.08)); padding: 1.2rem; border-radius: 12px 12px 0 0;}
       .muted { color: #6b7280; }
       .gold-text { color: var(--gold); font-weight:600; }
-      .navbar-logo { height: 40px; margin-right: 10px; }
-      .page-logo { height: 80px; margin-bottom: 20px; }
       
-      /* Gold Navbar Styles */
-      .navbar-gold {
-        background: linear-gradient(135deg, var(--gold-light), var(--gold-dark)) !important;
-        box-shadow: 0 2px 15px rgba(197, 157, 43, 0.3) !important;
-        border-bottom: 3px solid var(--gold-dark);
+      /* Round Logo Styles */
+      .navbar-logo { 
+        height: 45px; 
+        width: 45px;
+        margin-right: 12px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
       }
-      .navbar-gold .navbar-brand {
-        color: var(--dark) !important;
+      .navbar-logo:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+      .page-logo { 
+        height: 80px; 
+        width: 80px;
+        margin-bottom: 20px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid var(--gold);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      }
+      
+      /* Royal Blue Navbar Styles */
+      .navbar-royal-blue {
+        background: linear-gradient(135deg, var(--royal-blue), var(--royal-blue-dark)) !important;
+        box-shadow: 0 2px 15px rgba(30, 58, 138, 0.4) !important;
+        border-bottom: 3px solid var(--gold);
+      }
+      .navbar-royal-blue .navbar-brand {
+        color: white !important;
         font-weight: 700;
         transition: transform 0.3s ease;
+        display: flex;
+        align-items: center;
       }
-      .navbar-gold .navbar-brand:hover {
-        transform: scale(1.05);
+      .navbar-royal-blue .navbar-brand:hover {
+        transform: scale(1.02);
       }
-      .navbar-gold .nav-link {
-        color: var(--dark) !important;
+      .navbar-royal-blue .nav-link {
+        color: white !important;
         font-weight: 500;
         padding: 0.5rem 1rem;
         margin: 0 0.2rem;
-        border-radius: 6px;
+        border-radius: 8px;
         transition: all 0.3s ease;
+        border: 1px solid transparent;
       }
-      .navbar-gold .nav-link:hover {
-        background-color: rgba(15, 27, 45, 0.1);
-        color: var(--dark) !important;
+      .navbar-royal-blue .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        color: white !important;
         transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.3);
       }
-      .navbar-gold .navbar-toggler {
-        border-color: var(--dark);
+      .navbar-royal-blue .nav-link:active {
+        background-color: rgba(255, 255, 255, 0.25);
+        transform: translateY(0);
       }
-      .navbar-gold .navbar-toggler-icon {
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2815, 27, 45, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+      .navbar-royal-blue .navbar-toggler {
+        border-color: white;
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .navbar-royal-blue .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+      }
+      
+      /* Mobile responsiveness for navbar */
+      @media (max-width: 768px) {
+        .navbar-royal-blue .navbar-brand span {
+          font-size: 1rem;
+        }
+        .navbar-logo {
+          height: 40px;
+          width: 40px;
+        }
       }
     </style>
   </head>
   <body>
-    <nav class="navbar navbar-expand-lg py-3 navbar-gold">
+    <nav class="navbar navbar-expand-lg py-3 navbar-royal-blue">
       <div class="container">
         <a class="navbar-brand brand" href="{{ url_for('home') }}">
-          <img src="/static/images/logo.png" alt="HBI Logo" width="80px" height="60px" class="d-inline-block align-top">
+          <img src="/static/images/logo.png" alt="HBI Logo" class="navbar-logo">
           <span class="ms-2 d-none d-md-inline">HBI Virtual Campus</span>
         </a>
         
