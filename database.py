@@ -692,7 +692,7 @@ def get_student_results(student_id):
     finally:
         conn.close()
 def get_all_results():
-    """Get all student results for admin view"""
+    """Get all student results for admin view with lecturer information"""
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -706,10 +706,12 @@ def get_all_results():
                     u.title as unit_title,
                     r.score,
                     r.remarks,
+                    l.name as lecturer_name,
                     r.created_at
                 FROM results r
                 JOIN students s ON r.student_id = s.id
                 JOIN units u ON r.unit_id = u.id
+                LEFT JOIN lecturers l ON u.lecturer_id = l.id
                 ORDER BY r.created_at DESC
             ''')
         else:
@@ -722,10 +724,12 @@ def get_all_results():
                     u.title as unit_title,
                     r.score,
                     r.remarks,
+                    l.name as lecturer_name,
                     r.created_at
                 FROM results r
                 JOIN students s ON r.student_id = s.id
                 JOIN units u ON r.unit_id = u.id
+                LEFT JOIN lecturers l ON u.lecturer_id = l.id
                 ORDER BY r.created_at DESC
             ''')
         
@@ -741,6 +745,7 @@ def get_all_results():
                     'unit_title': result_data['unit_title'],
                     'score': result_data['score'],
                     'remarks': result_data.get('remarks', ''),
+                    'lecturer_name': result_data.get('lecturer_name', ''),
                     'created_at': result_data['created_at']
                 })
             else:  # SQLite
@@ -752,7 +757,8 @@ def get_all_results():
                     'unit_title': row[4],
                     'score': row[5],
                     'remarks': row[6] if len(row) > 6 else '',
-                    'created_at': row[7] if len(row) > 7 else None
+                    'lecturer_name': row[7] if len(row) > 7 else '',
+                    'created_at': row[8] if len(row) > 8 else None
                 })
         
         return results
