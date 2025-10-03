@@ -1202,4 +1202,45 @@ def delete_lecturer(lecturer_id):
     cursor = conn.cursor()
     
     try:
-        cursor.execute("DELETE FROM lecturers WHERE id = %s",
+        cursor.execute("DELETE FROM lecturers WHERE id = %s", (lecturer_id,))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting lecturer: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def delete_unit(unit_id):
+    """Delete unit"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("DELETE FROM units WHERE id = %s", (unit_id,))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error deleting unit: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+# Google Classroom and JotForm functions (placeholder implementations)
+def link_google_course(unit_id, google_course_id, google_course_name):
+    """Link Google Classroom course - placeholder"""
+    return True
+
+def get_google_course_by_unit(unit_id):
+    """Get Google Classroom course - placeholder"""
+    return None
+
+def save_jotform_form(form_id, form_title, form_type, unit_id=None, assignment_id=None, embed_url=None):
+    """Save JotForm form - placeholder"""
+    return True
+
+def get_jotform_forms_by_unit(unit_id):
+    """Get JotForm forms - placeholder"""
+    return []
