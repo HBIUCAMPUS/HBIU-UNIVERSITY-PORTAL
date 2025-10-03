@@ -5,10 +5,33 @@
     <div class="card p-4 card-accent">
       <h4 class="mb-3">Student Registration</h4>
       <form method="post">
-        <div class="mb-2"><label>Name</label><input class="form-control" name="name" required></div>
-        <div class="mb-2"><label>Email</label><input class="form-control" name="email" type="email" required></div>
-        <div class="mb-2"><label>Admission Number</label><input class="form-control" name="admission_no" required></div>
-        <div class="mb-2"><label>Password</label><input class="form-control" name="password" type="password" required></div>
+        <div class="mb-2">
+          <label>Name</label>
+          <input class="form-control" name="name" required>
+        </div>
+        <div class="mb-2">
+          <label>Email</label>
+          <input class="form-control" name="email" type="email" required>
+        </div>
+        <div class="mb-2">
+          <label>Admission Number</label>
+          <input class="form-control" name="admission_no" required>
+        </div>
+        <div class="mb-2">
+          <label>College</label>
+          <select class="form-select" name="college" required>
+            <option value="">Select College</option>
+            <option value="HBIU College of Health Science / addiction training">HBIU College of Health Science / addiction training</option>
+            <option value="HBIU College for leadership & Management">HBIU College for leadership & Management</option>
+            <option value="HBIU College of Business management">HBIU College of Business management</option>
+            <option value="HBIU college for behavioral and social science">HBIU college for behavioral and social science</option>
+            <option value="HBIU college of health, science and public health">HBIU college of health, science and public health</option>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label>Password</label>
+          <input class="form-control" name="password" type="password" required>
+        </div>
         <button class="btn btn-royal-blue mt-2 w-100">Create Account</button>
       </form>
     </div>
