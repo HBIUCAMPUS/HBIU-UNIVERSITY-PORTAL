@@ -8,6 +8,15 @@ import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
 
+# College options
+COLLEGES = [
+    "HBIU College of Health Science / addiction training",
+    "HBIU College for leadership & Management",
+    "HBIU College of Business management",
+    "HBIU college for behavioral and social science",
+    "HBIU college of health, science and public health"
+]
+
 def get_db():
     """Get database connection - supports both SQLite and PostgreSQL"""
     database_url = os.environ.get('DATABASE_URL')
@@ -43,7 +52,7 @@ def init_db():
     try:
         # Use simplified table creation that works for both databases
         tables_sql = [
-            # Students table
+            # Students table (updated with college field)
             '''
             CREATE TABLE IF NOT EXISTS students (
                 id SERIAL PRIMARY KEY,
@@ -51,6 +60,7 @@ def init_db():
                 email TEXT UNIQUE NOT NULL,
                 admission_no TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
+                college TEXT NOT NULL DEFAULT 'Not assigned',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
             ''',
@@ -238,7 +248,8 @@ def verify_student(email, password):
                 'name': student[1],
                 'email': student[2],
                 'admission_no': student[3],
-                'password': student[4]
+                'password': student[4],
+                'college': student[5] if len(student) > 5 else 'Not assigned'
             }
         return None
         
@@ -272,7 +283,7 @@ def verify_lecturer(email, password):
     finally:
         conn.close()
 
-def create_student(name, email, admission_no, password):
+def create_student(name, email, admission_no, password, college):
     """Create a new student account"""
     conn = get_db()
     cursor = conn.cursor()
@@ -280,8 +291,8 @@ def create_student(name, email, admission_no, password):
     
     try:
         cursor.execute(
-            "INSERT INTO students (name, email, admission_no, password) VALUES (%s, %s, %s, %s)",
-            (name, email, admission_no, hashed_pw)
+            "INSERT INTO students (name, email, admission_no, password, college) VALUES (%s, %s, %s, %s, %s)",
+            (name, email, admission_no, hashed_pw, college)
         )
         conn.commit()
         return True
@@ -368,7 +379,8 @@ def get_student_by_id(student_id):
                 'name': student[1],
                 'email': student[2],
                 'admission_no': student[3],
-                'password': student[4]
+                'password': student[4],
+                'college': student[5] if len(student) > 5 else 'Not assigned'
             }
         return None
     except Exception as e:
@@ -413,7 +425,8 @@ def get_all_students():
                 'name': row[1],
                 'email': row[2],
                 'admission_no': row[3],
-                'created_at': row[5] if len(row) > 5 else None
+                'college': row[5] if len(row) > 5 else 'Not assigned',
+                'created_at': row[6] if len(row) > 6 else None
             })
         return students
     except Exception as e:
@@ -443,6 +456,7 @@ def get_all_lecturers():
         return []
     finally:
         conn.close()
+
 def get_all_units_with_details():
     """Get all units with proper lecturer names"""
     conn = get_db()
@@ -530,6 +544,7 @@ def get_units_by_lecturer(lecturer_id):
         return []
     finally:
         conn.close()
+
 def get_all_units():
     """Get all units for students to browse (simple version)"""
     conn = get_db()
@@ -691,6 +706,7 @@ def get_student_results(student_id):
         return []
     finally:
         conn.close()
+
 def get_all_results():
     """Get all student results for admin view with lecturer information"""
     conn = get_db()
@@ -789,8 +805,9 @@ def get_unit_students(unit_id):
                 'name': row[1],
                 'email': row[2],
                 'admission_no': row[3],
-                'score': row[5] if len(row) > 5 else None,
-                'remarks': row[6] if len(row) > 6 else None
+                'college': row[5] if len(row) > 5 else 'Not assigned',
+                'score': row[6] if len(row) > 6 else None,
+                'remarks': row[7] if len(row) > 7 else None
             })
         return students
     except Exception as e:
@@ -1039,39 +1056,6 @@ def get_admin_activity_log(admin_id):
     finally:
         conn.close()
 
-def get_all_results():
-    """Get all results"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute('''
-            SELECT r.*, s.name as student_name, s.admission_no, u.code as unit_code, u.title as unit_title
-            FROM results r
-            JOIN students s ON r.student_id = s.id
-            JOIN units u ON r.unit_id = u.id
-            ORDER BY r.recorded_at DESC
-        ''')
-        results = []
-        for row in cursor.fetchall():
-            results.append({
-                'id': row[0],
-                'student_id': row[1],
-                'unit_id': row[2],
-                'score': row[3],
-                'remarks': row[4],
-                'student_name': row[6] if len(row) > 6 else 'Unknown',
-                'admission_no': row[7] if len(row) > 7 else 'Unknown',
-                'code': row[8] if len(row) > 8 else 'Unknown',
-                'title': row[9] if len(row) > 9 else 'Unknown'
-            })
-        return results
-    except Exception as e:
-        print(f"Error getting all results: {e}")
-        return []
-    finally:
-        conn.close()
-
 def get_all_students_with_units():
     """Get all students with their registered units"""
     conn = get_db()
@@ -1092,7 +1076,8 @@ def get_all_students_with_units():
                 'name': row[1],
                 'email': row[2],
                 'admission_no': row[3],
-                'unit_count': row[5] if len(row) > 5 else 0
+                'college': row[5] if len(row) > 5 else 'Not assigned',
+                'unit_count': row[6] if len(row) > 6 else 0
             })
         return students
     except Exception as e:
