@@ -329,8 +329,9 @@ def register_student():
         email = request.form['email']
         admission_no = request.form['admission_no']
         password = request.form['password']
+        college = request.form['college']  # NEW: Get college from form
         
-        if db.create_student(name, email, admission_no, password):
+        if db.create_student(name, email, admission_no, password, college):  # UPDATED: Pass college parameter
             flash('Student account created successfully! Please login.', 'success')
             return redirect(url_for('login'))
         else:
@@ -797,7 +798,8 @@ def admin_create_user():
         
         if user_type == 'student':
             admission_no = request.form['admission_no']
-            if db.create_student(name, email, admission_no, password):
+            college = request.form['college']  # NEW: Get college from form
+            if db.create_student(name, email, admission_no, password, college):  # UPDATED: Pass college parameter
                 db.log_admin_activity(session['admin_id'], 'create_student', f'Created student: {email}')
                 flash('Student created successfully!', 'success')
             else:
