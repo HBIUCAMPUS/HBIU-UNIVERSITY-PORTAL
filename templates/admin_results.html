@@ -26,17 +26,37 @@
             <tbody>
                 {% for result in results %}
                 <tr>
-                    <td>{{ result.student_name }}</td>
-                    <td>{{ result.admission_no }}</td>
-                    <td>{{ result.unit_code }} - {{ result.unit_title }}</td>
+                    <td>{{ result.student_name or '-' }}</td>
+                    <td>{{ result.admission_no or '-' }}</td>
                     <td>
-                        <span class="badge {% if result.score >= 70 %}bg-success{% elif result.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
-                            {{ result.score or 'N/A' }}
-                        </span>
+                        {% if result.unit_code and result.unit_title %}
+                            {{ result.unit_code }} - {{ result.unit_title }}
+                        {% elif result.unit_code %}
+                            {{ result.unit_code }}
+                        {% elif result.unit_title %}
+                            {{ result.unit_title }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if result.score is not none %}
+                            <span class="badge {% if result.score >= 70 %}bg-success{% elif result.score >= 50 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ result.score }}
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary">-</span>
+                        {% endif %}
                     </td>
                     <td>{{ result.remarks or '-' }}</td>
-                    <td>{{ result.lecturer_name or 'N/A' }}</td>
-                    <td>{{ result.created_at[:10] if result.created_at else 'N/A' }}</td>
+                    <td>{{ result.lecturer_name or '-' }}</td>
+                    <td>
+                        {% if result.created_at %}
+                            {{ result.created_at[:10] }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ url_for('admin_results_edit', result_id=result.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
