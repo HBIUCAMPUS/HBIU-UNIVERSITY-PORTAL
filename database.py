@@ -44,43 +44,6 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
-def add_college_column():
-    """Add college column to students table if it doesn't exist"""
-    conn = get_db()
-    cursor = conn.cursor()
-    
-    try:
-        # Check if college column exists
-        if os.environ.get('DATABASE_URL'):
-            # PostgreSQL
-            cursor.execute("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='students' and column_name='college'
-            """)
-            result = cursor.fetchone()
-            if result:
-                print("✅ College column already exists")
-                return
-        else:
-            # SQLite
-            cursor.execute("PRAGMA table_info(students)")
-            columns = [column[1] for column in cursor.fetchall()]
-            if 'college' in columns:
-                print("✅ College column already exists")
-                return
-        
-        # If we get here, column doesn't exist - add it
-        cursor.execute("ALTER TABLE students ADD COLUMN college TEXT DEFAULT 'Not assigned'")
-        conn.commit()
-        print("✅ Added college column to students table")
-        
-    except Exception as e:
-        print(f"❌ Error adding college column: {e}")
-        conn.rollback()
-    finally:
-        conn.close()
-
 def init_db():
     """Initialize database tables"""
     conn = get_db()
@@ -207,9 +170,6 @@ def init_db():
         conn.commit()
         print("✅ Database tables initialized successfully")
         
-        # Add college column migration for existing databases
-        add_college_column()
-        
         # Create default admin account
         create_default_admin()
         
@@ -330,25 +290,10 @@ def create_student(name, email, admission_no, password, college):
     hashed_pw = generate_password_hash(password)
     
     try:
-        # Try with college column first
-        try:
-            cursor.execute(
-                "INSERT INTO students (name, email, admission_no, password, college) VALUES (%s, %s, %s, %s, %s)",
-                (name, email, admission_no, hashed_pw, college)
-            )
-        except Exception as e:
-            # If college column doesn't exist, try without it and add the column
-            if "college" in str(e):
-                print("⚠️ College column not found, adding column and creating student...")
-                add_college_column()  # Add the missing column
-                # Retry the insert with college
-                cursor.execute(
-                    "INSERT INTO students (name, email, admission_no, password, college) VALUES (%s, %s, %s, %s, %s)",
-                    (name, email, admission_no, hashed_pw, college)
-                )
-            else:
-                raise e
-        
+        cursor.execute(
+            "INSERT INTO students (name, email, admission_no, password, college) VALUES (%s, %s, %s, %s, %s)",
+            (name, email, admission_no, hashed_pw, college)
+        )
         conn.commit()
         return True
     except Exception as e:
