@@ -10,7 +10,21 @@
         <h3>Welcome to HBI University</h3>
         <p class="muted">Sign in to continue</p>
       </div>
+      
+      <!-- NEW: Google Login Button -->
+      <div class="mb-3">
+        <a href="{{ url_for('google_login') }}" class="btn btn-outline-danger w-100">
+          <i class="fab fa-google"></i> Sign in with Google
+        </a>
+      </div>
+
+      <div class="text-center mb-3">
+        <hr>
+        <span class="bg-white px-3">OR</span>
+      </div>
+
       <div class="card-body">
+        <!-- YOUR EXISTING LOGIN FORM - EXACTLY THE SAME -->
         <form method="post" action="{{ url_for('login') }}">
           <div class="mb-3">
             <label class="form-label">Email</label>
