@@ -196,14 +196,14 @@ def create_default_admin():
         admin_count = cursor.fetchone()[0]
         
         if admin_count == 0:
-            # Create default admin
-            hashed_pw = generate_password_hash('Admin123!@#')
+            # Create your custom admin
+            hashed_pw = generate_password_hash('#Ausbildung2025')
             cursor.execute(
                 "INSERT INTO admins (email, password, role) VALUES (%s, %s, %s)",
-                ('admin@hbi.edu', hashed_pw, 'super_admin')
+                ('hbiuportal@gmail.com', hashed_pw, 'super_admin')
             )
             conn.commit()
-            print("✅ Default admin created: admin@hbi.edu / Admin123!@#")
+            print("✅ Custom admin created: hbiuportal@gmail.com / #Ausbildung2025")
         else:
             print(f"ℹ️ Admin accounts already exist: {admin_count} accounts found")
             
