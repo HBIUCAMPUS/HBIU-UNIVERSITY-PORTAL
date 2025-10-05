@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card p-4 card-accent">
+      <h4 class="mb-3">Two-Factor Authentication</h4>
+      <p>Enter the 6-digit code from your authenticator app:</p>
+      <form method="post">
+        <div class="mb-2">
+          <input type="text" name="totp_code" class="form-control" placeholder="000000" required maxlength="6" pattern="[0-9]{6}">
+        </div>
+        <button type="submit" class="btn btn-royal-blue w-100">Verify</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
