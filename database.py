@@ -417,25 +417,17 @@ def get_all_students():
     cursor = conn.cursor()
     
     try:
-        cursor.execute("SELECT * FROM students ORDER BY created_at DESC")
+        # Explicit column selection - much more reliable
+        cursor.execute("SELECT id, name, email, admission_no, college, created_at FROM students ORDER BY created_at DESC")
         students = []
-        
-        # DEBUG: Check the first row to see actual column order
-        rows = cursor.fetchall()
-        if rows:
-            first_row = rows[0]
-            print("DEBUG - First row columns:")
-            for i, value in enumerate(first_row):
-                print(f"  row[{i}] = {value}")
-        
-        for row in rows:
+        for row in cursor.fetchall():
             students.append({
                 'id': row[0],
                 'name': row[1],
                 'email': row[2],
                 'admission_no': row[3],
-                'college': row[5] if len(row) > 5 else 'Not assigned',
-                'created_at': row[6] if len(row) > 6 else None
+                'college': row[4],      # Now this is definitely college
+                'created_at': row[5]    # Now this is definitely created_at
             })
         return students
     except Exception as e:
