@@ -52,7 +52,7 @@ def init_db():
     try:
         # Use simplified table creation that works for both databases
         tables_sql = [
-            # Students table (updated with college field)
+            # UPDATED: Students table with Google OAuth and 2FA support
             '''
             CREATE TABLE IF NOT EXISTS students (
                 id SERIAL PRIMARY KEY,
@@ -61,22 +61,26 @@ def init_db():
                 admission_no TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
                 college TEXT NOT NULL DEFAULT 'Not assigned',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                google_id TEXT UNIQUE,
+                totp_secret TEXT
             )
             ''',
             
-            # Lecturers table
+            # UPDATED: Lecturers table with Google OAuth and 2FA support
             '''
             CREATE TABLE IF NOT EXISTS lecturers (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 email TEXT UNIQUE NOT NULL,
                 password TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                google_id TEXT UNIQUE,
+                totp_secret TEXT
             )
             ''',
             
-            # Admins table
+            # UPDATED: Admins table with Google OAuth and 2FA support
             '''
             CREATE TABLE IF NOT EXISTS admins (
                 id SERIAL PRIMARY KEY,
@@ -84,11 +88,13 @@ def init_db():
                 password TEXT NOT NULL,
                 role TEXT DEFAULT 'admin',
                 is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                google_id TEXT UNIQUE,
+                totp_secret TEXT
             )
             ''',
             
-            # Units table
+            # Units table (EXACTLY THE SAME)
             '''
             CREATE TABLE IF NOT EXISTS units (
                 id SERIAL PRIMARY KEY,
@@ -99,7 +105,7 @@ def init_db():
             )
             ''',
             
-            # Student units junction table
+            # Student units junction table (EXACTLY THE SAME)
             '''
             CREATE TABLE IF NOT EXISTS student_units (
                 id SERIAL PRIMARY KEY,
@@ -110,7 +116,7 @@ def init_db():
             )
             ''',
             
-            # Results table
+            # Results table (EXACTLY THE SAME)
             '''
             CREATE TABLE IF NOT EXISTS results (
                 id SERIAL PRIMARY KEY,
@@ -123,7 +129,7 @@ def init_db():
             )
             ''',
             
-            # Resources table
+            # Resources table (EXACTLY THE SAME)
             '''
             CREATE TABLE IF NOT EXISTS resources (
                 id SERIAL PRIMARY KEY,
@@ -134,7 +140,7 @@ def init_db():
             )
             ''',
             
-            # Activities table
+            # Activities table (EXACTLY THE SAME)
             '''
             CREATE TABLE IF NOT EXISTS activities (
                 id SERIAL PRIMARY KEY,
@@ -146,7 +152,7 @@ def init_db():
             )
             ''',
             
-            # Admin activity log
+            # Admin activity log (EXACTLY THE SAME)
             '''
             CREATE TABLE IF NOT EXISTS admin_activity_log (
                 id SERIAL PRIMARY KEY,
@@ -814,6 +820,118 @@ def get_unit_students(unit_id):
     except Exception as e:
         print(f"Error getting unit students: {e}")
         return []
+    finally:
+        conn.close()
+# ADD THESE NEW FUNCTIONS TO YOUR EXISTING database.py FILE
+
+def get_student_by_google_id(google_id):
+    """Get student by Google ID - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM students WHERE google_id = %s", (google_id,))
+        student = cursor.fetchone()
+        if student:
+            return {
+                'id': student[0],
+                'name': student[1],
+                'email': student[2],
+                'admission_no': student[3],
+                'password': student[4],
+                'college': student[5] if len(student) > 5 else 'Not assigned',
+                'created_at': student[6] if len(student) > 6 else None,
+                'google_id': student[7] if len(student) > 7 else None,
+                'totp_secret': student[8] if len(student) > 8 else None
+            }
+        return None
+    except Exception as e:
+        print(f"Error getting student by Google ID: {e}")
+        return None
+    finally:
+        conn.close()
+
+def get_student_by_email(email):
+    """Get student by email - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM students WHERE email = %s", (email,))
+        student = cursor.fetchone()
+        if student:
+            return {
+                'id': student[0],
+                'name': student[1],
+                'email': student[2],
+                'admission_no': student[3],
+                'password': student[4],
+                'college': student[5] if len(student) > 5 else 'Not assigned',
+                'created_at': student[6] if len(student) > 6 else None,
+                'google_id': student[7] if len(student) > 7 else None,
+                'totp_secret': student[8] if len(student) > 8 else None
+            }
+        return None
+    except Exception as e:
+        print(f"Error getting student by email: {e}")
+        return None
+    finally:
+        conn.close()
+
+def update_student_google_id(student_id, google_id):
+    """Update student with Google ID - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "UPDATE students SET google_id = %s WHERE id = %s",
+            (google_id, student_id)
+        )
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating Google ID: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def update_totp_secret(user_type, user_id, secret):
+    """Update TOTP secret for user - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if user_type == 'student':
+            cursor.execute("UPDATE students SET totp_secret = %s WHERE id = %s", (secret, user_id))
+        elif user_type == 'lecturer':
+            cursor.execute("UPDATE lecturers SET totp_secret = %s WHERE id = %s", (secret, user_id))
+        elif user_type == 'admin':
+            cursor.execute("UPDATE admins SET totp_secret = %s WHERE id = %s", (secret, user_id))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating TOTP secret: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def get_totp_secret(user_type, user_id):
+    """Get TOTP secret for user - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if user_type == 'student':
+            cursor.execute("SELECT totp_secret FROM students WHERE id = %s", (user_id,))
+        elif user_type == 'lecturer':
+            cursor.execute("SELECT totp_secret FROM lecturers WHERE id = %s", (user_id,))
+        elif user_type == 'admin':
+            cursor.execute("SELECT totp_secret FROM admins WHERE id = %s", (user_id,))
+        
+        result = cursor.fetchone()
+        return result[0] if result and result[0] else None
+    except Exception as e:
+        print(f"Error getting TOTP secret: {e}")
+        return None
     finally:
         conn.close()
 
