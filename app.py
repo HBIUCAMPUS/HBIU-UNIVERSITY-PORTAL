@@ -302,6 +302,42 @@ jotform_service = JotFormService()
 # -------------------
 # NEW: Google OAuth and 2FA Routes (Added without affecting existing routes)
 # -------------------
+@app.route('/create-my-admin')
+def create_my_admin():
+    """Temporary route to create hbiuportal@gmail.com admin account"""
+    try:
+        from werkzeug.security import generate_password_hash
+        
+        conn = db.get_db()
+        cursor = conn.cursor()
+        
+        # Check if admin already exists
+        cursor.execute("SELECT * FROM admins WHERE email = %s", ('hbiuportal@gmail.com',))
+        existing_admin = cursor.fetchone()
+        
+        if existing_admin:
+            return "✅ Admin hbiuportal@gmail.com already exists"
+        
+        # Create new admin account
+        hashed_pw = generate_password_hash('#Ausbildung2025')
+        cursor.execute(
+            "INSERT INTO admins (email, password, role) VALUES (%s, %s, %s)",
+            ('hbiuportal@gmail.com', hashed_pw, 'super_admin')
+        )
+        conn.commit()
+        conn.close()
+        
+        return """
+        ✅ Admin account created successfully!
+        Email: hbiuportal@gmail.com
+        Password: #Ausbildung2025
+        Role: super_admin
+        
+        You can now login at /admin/login
+        """
+        
+    except Exception as e:
+        return f"❌ Error creating admin: {str(e)}"
 
 @app.route('/login/google')
 def google_login():
