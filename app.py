@@ -32,12 +32,13 @@ google = oauth.register(
     name='google',
     client_id=os.environ.get('GOOGLE_OAUTH_CLIENT_ID'),
     client_secret=os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET'),
-    server_metadata_url='https://accounts.google.com/.well-known/openid_configuration',
+    access_token_url='https://accounts.google.com/o/oauth2/token',
+    authorize_url='https://accounts.google.com/o/oauth2/auth',
+    api_base_url='https://www.googleapis.com/oauth2/v1/',
     client_kwargs={
         'scope': 'openid email profile'
     }
 )
-
 # NEW: Flask-Mail Configuration
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
