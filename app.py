@@ -1049,6 +1049,35 @@ HBIU Security Team
             flash('Login error. Please try again.', 'error')
     
     return render_template('admin_login.html')
+@app.route('/update-admin-email')
+def update_admin_email():
+    """Update existing admin email to hbiuportal@gmail.com"""
+    try:
+        conn = db.get_db()
+        cursor = conn.cursor()
+        
+        # Update the admin email
+        cursor.execute(
+            "UPDATE admins SET email = %s WHERE email = %s",
+            ('hbiuportal@gmail.com', 'admin@hbi.edu')
+        )
+        conn.commit()
+        conn.close()
+        
+        return """
+        ✅ Admin email updated successfully!
+        
+        Old: admin@hbi.edu
+        New: hbiuportal@gmail.com
+        Password: #Ausbildung2025 (unchanged)
+        
+        You can now login at /admin/login with:
+        Email: hbiuportal@gmail.com
+        Password: #Ausbildung2025
+        """
+        
+    except Exception as e:
+        return f"❌ Error updating admin: {str(e)}"
 @app.route('/admin/verify-code', methods=['GET', 'POST'])
 def admin_verify_code():
     """Verify email code for admin login - NEW ROUTE"""
