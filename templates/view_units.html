@@ -1,27 +1,5 @@
 {% extends "base.html" %}
 {% block content %}
-<h4>Available Units</h4>
-
-<div class="row">
-  {% for u in units %}
-    <div class="col-md-6 mb-3">
-      <div class="card p-3">
-        <h6>{{ u.code }} - {{ u.title }}</h6>
-        <small class="muted">Lecturer: {{ u.lecturer or 'TBA' }}</small>
-        <div class="mt-2">
-          <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('unit_detail', unit_id=u.id) }}">View Details</a>
-          
-          <!-- Register button for this specific unit -->
-          <form method="post" action="{{ url_for('register_unit') }}" class="d-inline">
-            <input type="hidden" name="code" value="{{ u.code }}">
-            <button type="submit" class="btn btn-gold btn-sm">Register</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  {% endfor %}
-</div>
-
 <!-- Keep the manual code entry as a fallback -->
 <div class="card p-3 mt-3">
   <h6>Register with Unit Code</h6>
