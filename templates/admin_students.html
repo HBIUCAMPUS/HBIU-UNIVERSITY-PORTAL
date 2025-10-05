@@ -28,7 +28,13 @@
                     <td>{{ student.college or 'Not assigned' }}</td>
                     <td>
                         {% if student.created_at %}
-                            {{ student.created_at.strftime('%Y-%m-%d') }}
+                            {% if student.created_at is string %}
+                                {# Handle string date #}
+                                {{ student.created_at[:10] }}
+                            {% else %}
+                                {# Handle datetime object #}
+                                {{ student.created_at.strftime('%Y-%m-%d') }}
+                            {% endif %}
                         {% else %}
                             N/A
                         {% endif %}
