@@ -9,6 +9,15 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import pickle
 import json
+
+# NEW IMPORTS FOR GOOGLE LOGIN & 2FA
+from authlib.integrations.flask_client import OAuth
+from flask_mail import Mail
+import pyotp
+import qrcode
+import io
+import base64
+
 app = Flask(__name__)
 
 # -------------------
@@ -16,6 +25,28 @@ app = Flask(__name__)
 # -------------------
 app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-key-dev-only')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')
+
+# NEW: Google OAuth Configuration
+oauth = OAuth(app)
+google = oauth.register(
+    name='google',
+    client_id=os.environ.get('GOOGLE_OAUTH_CLIENT_ID'),
+    client_secret=os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid_configuration',
+    client_kwargs={
+        'scope': 'openid email profile'
+    }
+)
+
+# NEW: Flask-Mail Configuration
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+
+mail = Mail(app)
 
 # Security headers middleware
 @app.after_request
@@ -201,6 +232,7 @@ def get_user_courses(user_id=None):
     """Get all courses for the authenticated user"""
     # Return empty list as before - no changes to existing functionality
     return [], None  # Placeholder
+
 # -------------------
 # JotForm Integration
 # -------------------
@@ -268,8 +300,205 @@ class JotFormService:
 jotform_service = JotFormService()
 
 # -------------------
-# Routes (ALL EXISTING FUNCTIONALITY PRESERVED)
+# NEW: Google OAuth and 2FA Routes (Added without affecting existing routes)
 # -------------------
+
+@app.route('/login/google')
+def google_login():
+    """Initiate Google OAuth login - NEW ROUTE"""
+    try:
+        redirect_uri = url_for('google_callback', _external=True)
+        return google.authorize_redirect(redirect_uri)
+    except Exception as e:
+        print(f"Google OAuth error: {e}")
+        flash('Google login is currently unavailable. Please use email login.', 'error')
+        return redirect(url_for('login'))
+
+@app.route('/login/google/callback')
+def google_callback():
+    """Google OAuth callback - NEW ROUTE"""
+    try:
+        token = google.authorize_access_token()
+        user_info = token.get('userinfo')
+        
+        if user_info:
+            # Check if user exists in database by Google ID
+            student = db.get_student_by_google_id(user_info['sub'])
+            if not student:
+                # Check by email
+                student = db.get_student_by_email(user_info['email'])
+                if student:
+                    # Link Google account to existing student
+                    db.update_student_google_id(student['id'], user_info['sub'])
+                else:
+                    # Store Google user info for registration
+                    session['google_user'] = {
+                        'sub': user_info['sub'],
+                        'name': user_info['name'],
+                        'email': user_info['email'],
+                        'picture': user_info.get('picture', '')
+                    }
+                    return redirect(url_for('google_register'))
+            
+            # Check if 2FA is enabled
+            if student.get('totp_secret'):
+                session['pre_2fa_user'] = {
+                    'id': student['id'],
+                    'type': 'student',
+                    'email': student['email'],
+                    'name': student['name']
+                }
+                return redirect(url_for('verify_2fa'))
+            else:
+                session['user_id'] = student['id']
+                session['user_type'] = 'student'
+                session['user_email'] = student['email']
+                session['user_name'] = student['name']
+                flash('Google login successful!', 'success')
+                return redirect(url_for('student_dashboard'))
+    
+    except Exception as e:
+        print(f"Google OAuth callback error: {e}")
+        flash('Google login failed. Please try again or use email login.', 'error')
+    
+    return redirect(url_for('login'))
+
+@app.route('/register/google')
+def google_register():
+    """Registration page for Google OAuth users - NEW ROUTE"""
+    google_user = session.get('google_user')
+    if not google_user:
+        return redirect(url_for('login'))
+    return render_template('google_register.html', google_user=google_user)
+
+@app.route('/register/google/complete', methods=['POST'])
+def complete_google_registration():
+    """Complete Google OAuth registration - NEW ROUTE"""
+    google_user = session.get('google_user')
+    if not google_user:
+        return redirect(url_for('login'))
+    
+    admission_no = request.form.get('admission_no')
+    college = request.form.get('college')
+    
+    # Create student account with random password
+    if db.create_student(
+        name=google_user['name'],
+        email=google_user['email'],
+        admission_no=admission_no,
+        password=generate_password_hash(os.urandom(24).hex()),
+        college=college
+    ):
+        # Link Google account
+        student = db.get_student_by_email(google_user['email'])
+        db.update_student_google_id(student['id'], google_user['sub'])
+        
+        session.pop('google_user', None)
+        
+        # Auto-login and redirect to 2FA setup
+        session['user_id'] = student['id']
+        session['user_type'] = 'student'
+        session['user_email'] = student['email']
+        session['user_name'] = student['name']
+        
+        flash('Registration successful! Please setup 2FA for security.', 'success')
+        return redirect(url_for('setup_2fa'))
+    
+    flash('Registration failed. Please try again.', 'error')
+    return redirect(url_for('login'))
+
+@app.route('/setup-2fa')
+def setup_2fa():
+    """Setup 2FA for user - NEW ROUTE"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Generate TOTP secret
+    totp_secret = pyotp.random_base32()
+    session['pending_totp_secret'] = totp_secret
+    
+    # Create TOTP object
+    totp = pyotp.TOTP(totp_secret)
+    provisioning_uri = totp.provisioning_uri(
+        name=session['user_email'],
+        issuer_name='HBIU University Portal'
+    )
+    
+    # Generate QR code
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(provisioning_uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Convert to base64 for HTML display
+    buffered = io.BytesIO()
+    img.save(buffered, format="PNG")
+    img_str = base64.b64encode(buffered.getvalue()).decode()
+    
+    return render_template('setup_2fa.html', 
+                         qr_code=img_str, 
+                         totp_secret=totp_secret)
+
+@app.route('/verify-2fa-setup', methods=['POST'])
+def verify_2fa_setup():
+    """Verify 2FA setup - NEW ROUTE"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    totp_code = request.form.get('totp_code')
+    totp_secret = session.get('pending_totp_secret')
+    
+    if not totp_secret:
+        flash('Session expired. Please try again.', 'error')
+        return redirect(url_for('setup_2fa'))
+    
+    totp = pyotp.TOTP(totp_secret)
+    if totp.verify(totp_code):
+        # Save TOTP secret to database
+        db.update_totp_secret(session['user_type'], session['user_id'], totp_secret)
+        session.pop('pending_totp_secret', None)
+        flash('2FA setup successful! Your account is now more secure.', 'success')
+        return redirect(url_for('student_dashboard'))
+    else:
+        flash('Invalid code. Please try again.', 'error')
+        return redirect(url_for('setup_2fa'))
+
+@app.route('/verify-2fa', methods=['GET', 'POST'])
+def verify_2fa():
+    """Verify 2FA code for login - NEW ROUTE"""
+    if request.method == 'GET':
+        return render_template('verify_2fa.html')
+    
+    # POST request - verify code
+    totp_code = request.form.get('totp_code')
+    pre_2fa_user = session.get('pre_2fa_user')
+    
+    if not pre_2fa_user:
+        flash('Session expired. Please login again.', 'error')
+        return redirect(url_for('login'))
+    
+    # Get TOTP secret from database
+    totp_secret = db.get_totp_secret(pre_2fa_user['type'], pre_2fa_user['id'])
+    
+    if totp_secret:
+        totp = pyotp.TOTP(totp_secret)
+        if totp.verify(totp_code):
+            # 2FA successful, log user in
+            session['user_id'] = pre_2fa_user['id']
+            session['user_type'] = pre_2fa_user['type']
+            session['user_email'] = pre_2fa_user['email']
+            session['user_name'] = pre_2fa_user['name']
+            session.pop('pre_2fa_user', None)
+            flash('Login successful!', 'success')
+            return redirect(url_for('student_dashboard'))
+    
+    flash('Invalid 2FA code. Please try again.', 'error')
+    return render_template('verify_2fa.html')
+
+# -------------------
+# ALL YOUR EXISTING ROUTES REMAIN UNCHANGED BELOW
+# -------------------
+
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory('static', filename)
@@ -1111,8 +1340,6 @@ def admin_logout():
     session.clear()
     flash('Admin logged out successfully', 'info')
     return redirect(url_for('home'))
-    # ... all your existing routes ...
-
 
 # -------------------
 # Error handling
@@ -1125,9 +1352,6 @@ def not_found(e):
 def server_error(e):
     return render_template("500.html"), 500
 
-# -------------------
-# Run app (OPTIMIZED FOR RENDER)
-# -------------------
 # -------------------
 # Run app (OPTIMIZED FOR RENDER)
 # -------------------
