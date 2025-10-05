@@ -4,6 +4,20 @@
   <div class="col-md-6">
     <div class="card p-4 card-accent">
       <h4 class="mb-3">Student Registration</h4>
+      
+      <!-- NEW: Google Registration Option -->
+      <div class="mb-3">
+        <a href="{{ url_for('google_login') }}" class="btn btn-outline-danger w-100">
+          <i class="fab fa-google"></i> Sign up with Google
+        </a>
+      </div>
+
+      <div class="text-center mb-3">
+        <hr>
+        <span class="bg-white px-3">OR</span>
+      </div>
+
+      <!-- YOUR EXISTING REGISTRATION FORM - EXACTLY THE SAME -->
       <form method="post">
         <div class="mb-2">
           <label>Name</label>
@@ -20,6 +34,7 @@
         <div class="mb-2">
           <label>College</label>
           <select class="form-select" name="college" required>
+            <option value="">Select College</option>
             <option value="HBIU College of Behavioral and Social Science">HBIU College of Behavioral and Social Science</option>
             <option value="HBIU College of Health Science">HBIU College of Health Science</option>
             <option value="HBIU College of Business">HBIU College of Business</option>
