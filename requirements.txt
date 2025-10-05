@@ -8,3 +8,10 @@ google-api-python-client==2.86.0
 python-dotenv==1.0.0
 jotform==1.2.0
 requests==2.28.2
+
+# NEW: Google OAuth and 2FA dependencies
+authlib==1.2.1
+pyotp==2.8.0
+qrcode==7.4.2
+Pillow==10.0.1
+flask-mail==0.9.1
