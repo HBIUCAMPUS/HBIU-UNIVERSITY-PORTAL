@@ -184,35 +184,29 @@ def init_db():
         conn.rollback()
     finally:
         conn.close()
-
 def create_default_admin():
-    """Create a default admin account if none exists"""
+    """Ensure hbiuportal@gmail.com admin account exists"""
     conn = get_db()
     cursor = conn.cursor()
     
     try:
-        # Check if any admin exists
-        cursor.execute("SELECT COUNT(*) FROM admins")
-        admin_count = cursor.fetchone()[0]
+        # Delete any existing admin with this email (cleanup)
+        cursor.execute("DELETE FROM admins WHERE email = %s", ('hbiuportal@gmail.com',))
         
-        if admin_count == 0:
-            # Create your custom admin
-            hashed_pw = generate_password_hash('#Ausbildung2025')
-            cursor.execute(
-                "INSERT INTO admins (email, password, role) VALUES (%s, %s, %s)",
-                ('hbiuportal@gmail.com', hashed_pw, 'super_admin')
-            )
-            conn.commit()
-            print("✅ Custom admin created: hbiuportal@gmail.com / #Ausbildung2025")
-        else:
-            print(f"ℹ️ Admin accounts already exist: {admin_count} accounts found")
+        # Create your custom admin
+        hashed_pw = generate_password_hash('#Ausbildung2025')
+        cursor.execute(
+            "INSERT INTO admins (email, password, role) VALUES (%s, %s, %s)",
+            ('hbiuportal@gmail.com', hashed_pw, 'super_admin')
+        )
+        conn.commit()
+        print("✅ Admin account ensured: hbiuportal@gmail.com / #Ausbildung2025")
             
     except Exception as e:
-        print(f"Error creating default admin: {e}")
+        print(f"Error ensuring admin: {e}")
         conn.rollback()
     finally:
         conn.close()
-
 # ==================== AUTHENTICATION FUNCTIONS ====================
 
 def verify_admin(email, password):
