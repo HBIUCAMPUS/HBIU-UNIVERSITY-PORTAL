@@ -419,7 +419,16 @@ def get_all_students():
     try:
         cursor.execute("SELECT * FROM students ORDER BY created_at DESC")
         students = []
-        for row in cursor.fetchall():
+        
+        # DEBUG: Check the first row to see actual column order
+        rows = cursor.fetchall()
+        if rows:
+            first_row = rows[0]
+            print("DEBUG - First row columns:")
+            for i, value in enumerate(first_row):
+                print(f"  row[{i}] = {value}")
+        
+        for row in rows:
             students.append({
                 'id': row[0],
                 'name': row[1],
