@@ -17,6 +17,7 @@ import pyotp
 import qrcode
 import io
 import base64
+from flask_mail import Mail, Message  # Make sure Message is included
 
 app = Flask(__name__)
 
@@ -1016,8 +1017,9 @@ def admin_login():
                     'created_at': datetime.now().isoformat()
                 }
                 
-                # Send verification email
+                # Send verification email - FIXED VERSION
                 try:
+                    from flask_mail import Message  # Import here if needed
                     msg = Message(
                         subject='HBIU Admin Portal - Verification Code',
                         recipients=[admin['email']],
@@ -1156,8 +1158,9 @@ def admin_resend_code():
     verification_data['created_at'] = datetime.now().isoformat()
     session['admin_verification'] = verification_data
     
-    # Send new verification email
+    # Send new verification email - FIXED VERSION
     try:
+        from flask_mail import Message  # Import here if needed
         msg = Message(
             subject='HBIU Admin Portal - New Verification Code',
             recipients=[verification_data['admin_email']],
