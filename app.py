@@ -967,18 +967,46 @@ def admin_login():
         try:
             admin = db.verify_admin(email, password)
             if admin:
-                session['admin_id'] = admin['id']
-                session['admin_email'] = admin['email']
-                session['user_type'] = 'admin'
+                # Generate a 6-digit verification code
+                import random
+                verification_code = str(random.randint(100000, 999999))
                 
-                # FIXED: Use dictionary-style access for sqlite3.Row
-                session['admin_role'] = admin['role'] if 'role' in admin else 'admin'
+                # Store verification code in session
+                session['admin_verification'] = {
+                    'admin_id': admin['id'],
+                    'admin_email': admin['email'],
+                    'admin_role': admin.get('role', 'admin'),
+                    'verification_code': verification_code,
+                    'attempts': 0,
+                    'created_at': datetime.now().isoformat()
+                }
                 
-                # Log the login activity
-                db.log_admin_activity(admin['id'], 'LOGIN', 'Admin logged in', request.remote_addr)
-                
-                flash('Login successful!', 'success')
-                return redirect(url_for('admin_dashboard'))
+                # Send verification email
+                try:
+                    msg = Message(
+                        subject='HBIU Admin Portal - Verification Code',
+                        recipients=[admin['email']],
+                        body=f'''
+Hello Admin,
+
+Your verification code for HBIU Admin Portal is: {verification_code}
+
+This code will expire in 10 minutes.
+
+If you did not request this login, please ignore this email.
+
+Best regards,
+HBIU Security Team
+                        '''
+                    )
+                    mail.send(msg)
+                    
+                    flash('Verification code sent to your email. Please check your inbox.', 'success')
+                    return redirect(url_for('admin_verify_code'))
+                    
+                except Exception as e:
+                    print(f"Email sending error: {e}")
+                    flash('Error sending verification email. Please try again.', 'error')
             else:
                 flash('Invalid email or password', 'error')
         except Exception as e:
@@ -986,7 +1014,109 @@ def admin_login():
             flash('Login error. Please try again.', 'error')
     
     return render_template('admin_login.html')
+@app.route('/admin/verify-code', methods=['GET', 'POST'])
+def admin_verify_code():
+    """Verify email code for admin login - NEW ROUTE"""
+    verification_data = session.get('admin_verification')
+    
+    if not verification_data:
+        flash('Session expired. Please login again.', 'error')
+        return redirect(url_for('admin_login'))
+    
+    # Check if code is expired (10 minutes)
+    created_at = datetime.fromisoformat(verification_data['created_at'])
+    if datetime.now() - created_at > timedelta(minutes=10):
+        session.pop('admin_verification', None)
+        flash('Verification code has expired. Please login again.', 'error')
+        return redirect(url_for('admin_login'))
+    
+    if request.method == 'POST':
+        entered_code = request.form.get('verification_code')
+        
+        if not entered_code:
+            flash('Please enter the verification code', 'error')
+            return render_template('admin_verify_code.html')
+        
+        # Check attempts
+        if verification_data['attempts'] >= 3:
+            session.pop('admin_verification', None)
+            flash('Too many failed attempts. Please login again.', 'error')
+            return redirect(url_for('admin_login'))
+        
+        # Verify code
+        if entered_code == verification_data['verification_code']:
+            # Code verified, log admin in
+            session['admin_id'] = verification_data['admin_id']
+            session['admin_email'] = verification_data['admin_email']
+            session['user_type'] = 'admin'
+            session['admin_role'] = verification_data['admin_role']
+            
+            # Log the login activity
+            db.log_admin_activity(
+                verification_data['admin_id'], 
+                'LOGIN', 
+                'Admin logged in with email 2FA', 
+                request.remote_addr
+            )
+            
+            session.pop('admin_verification', None)
+            flash('Secure login successful!', 'success')
+            return redirect(url_for('admin_dashboard'))
+        else:
+            # Increment attempts
+            verification_data['attempts'] += 1
+            session['admin_verification'] = verification_data
+            
+            remaining_attempts = 3 - verification_data['attempts']
+            flash(f'Invalid verification code. {remaining_attempts} attempts remaining.', 'error')
+    
+    return render_template('admin_verify_code.html', 
+                         email=verification_data['admin_email'])
 
+@app.route('/admin/resend-code')
+def admin_resend_code():
+    """Resend verification code - NEW ROUTE"""
+    verification_data = session.get('admin_verification')
+    
+    if not verification_data:
+        flash('Session expired. Please login again.', 'error')
+        return redirect(url_for('admin_login'))
+    
+    # Generate new code
+    import random
+    new_code = str(random.randint(100000, 999999))
+    
+    # Update session
+    verification_data['verification_code'] = new_code
+    verification_data['attempts'] = 0
+    verification_data['created_at'] = datetime.now().isoformat()
+    session['admin_verification'] = verification_data
+    
+    # Send new verification email
+    try:
+        msg = Message(
+            subject='HBIU Admin Portal - New Verification Code',
+            recipients=[verification_data['admin_email']],
+            body=f'''
+Hello Admin,
+
+Your new verification code for HBIU Admin Portal is: {new_code}
+
+This code will expire in 10 minutes.
+
+If you did not request this login, please ignore this email.
+
+Best regards,
+HBIU Security Team
+            '''
+        )
+        mail.send(msg)
+        flash('New verification code sent to your email.', 'success')
+    except Exception as e:
+        print(f"Email resend error: {e}")
+        flash('Error sending verification email. Please try again.', 'error')
+    
+    return redirect(url_for('admin_verify_code'))
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
