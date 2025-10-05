@@ -40,15 +40,14 @@ google = oauth.register(
     }
 )
 # NEW: Flask-Mail Configuration
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+app.config['MAIL_USERNAME'] = 'hbiuportal@gmail.com'
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')  # Your app password
+app.config['MAIL_DEFAULT_SENDER'] = 'hbiuportal@gmail.com'
 
 mail = Mail(app)
-
 # Security headers middleware
 @app.after_request
 def set_security_headers(response):
