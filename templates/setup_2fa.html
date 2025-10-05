@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card p-4 card-accent">
+      <h4 class="mb-3">Setup Two-Factor Authentication</h4>
+      <p>Scan this QR code with Google Authenticator or Authy:</p>
+      <div class="text-center mb-3">
+        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" class="img-fluid" style="max-width: 200px;">
+      </div>
+      <p class="text-center">Or enter this secret manually: <code class="bg-light p-2 rounded">{{ totp_secret }}</code></p>
+      <form method="post" action="{{ url_for('verify_2fa_setup') }}">
+        <div class="mb-2">
+          <label>Enter 6-digit code from your app:</label>
+          <input type="text" name="totp_code" class="form-control" placeholder="000000" required maxlength="6" pattern="[0-9]{6}">
+        </div>
+        <button type="submit" class="btn btn-royal-blue w-100">Verify and Enable 2FA</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
