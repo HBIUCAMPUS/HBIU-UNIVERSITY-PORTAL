@@ -1,21 +1,81 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="row justify-content-center">
-  <div class="col-md-6">
+  <div class="col-md-8">
     <div class="card p-4 card-accent">
       <h4 class="mb-3">Create New Unit</h4>
-      <form method="post">
-        <div class="mb-2">
-          <label>Unit Code</label>
-          <input class="form-control" name="code" required placeholder="e.g., CS101">
+      <form method="post" enctype="multipart/form-data">
+        <!-- Unit Code and Title -->
+        <div class="row">
+          <div class="col-md-6 mb-2">
+            <label>Unit Code</label>
+            <input class="form-control" name="code" required placeholder="e.g., CS101">
+          </div>
+          <div class="col-md-6 mb-2">
+            <label>Unit Title</label>
+            <input class="form-control" name="title" required placeholder="e.g., Introduction to Programming">
+          </div>
         </div>
+        
+        <!-- Description -->
         <div class="mb-2">
-          <label>Unit Title</label>
-          <input class="form-control" name="title" required placeholder="e.g., Introduction to Programming">
+          <label>Description</label>
+          <textarea class="form-control" name="description" rows="4" placeholder="Add unit description"></textarea>
         </div>
+        
+        <!-- Featured Image -->
+        <div class="mb-2">
+          <label>Featured Image</label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input" id="featuredImage" name="featured_image" accept="image/*">
+            <label class="custom-file-label" for="featuredImage">Choose image file</label>
+          </div>
+          <small class="form-text text-muted">Supported formats: PNG, JPG, GIF up to 10MB</small>
+        </div>
+        
+        <!-- Intro Video -->
+        <div class="mb-2">
+          <label>Intro Video</label>
+          <div class="custom-file">
+            <input type="file" class="custom-file-input" id="introVideo" name="intro_video" accept="video/*">
+            <label class="custom-file-label" for="introVideo">Choose video file</label>
+          </div>
+          <small class="form-text text-muted">Supported formats: MP4, WebM up to 100MB</small>
+        </div>
+        
         <button class="btn btn-royal-blue mt-2 w-100">Create Unit</button>
       </form>
     </div>
   </div>
 </div>
+
+<script>
+  // Update file input labels to show selected file names
+  document.addEventListener('DOMContentLoaded', function() {
+    const fileInputs = document.querySelectorAll('.custom-file-input');
+    
+    fileInputs.forEach(input => {
+      input.addEventListener('change', function() {
+        const fileName = this.files[0] ? this.files[0].name : 'Choose file';
+        const label = this.nextElementSibling;
+        label.textContent = fileName;
+      });
+    });
+  });
+</script>
+
+<style>
+  .card-accent {
+    border-top: 3px solid #4e73df;
+  }
+  
+  .custom-file-label::after {
+    content: "Browse";
+  }
+  
+  .form-control:focus, .custom-file-input:focus ~ .custom-file-label {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+  }
+</style>
 {% endblock %}
