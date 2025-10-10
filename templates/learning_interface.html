@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <!-- Sidebar Navigation -->
+    <div class="col-md-4 col-lg-3">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0">Course Content</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="courseChapters">
+                    <!-- Chapters will be dynamically loaded here -->
+                    {% for chapter in chapters %}
+                    <div class="list-group-item chapter-item" data-chapter-id="{{ chapter.id }}">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-1 chapter-title" style="cursor: pointer;">
+                                <i class="fas fa-folder me-2"></i>{{ chapter.title }}
+                            </h6>
+                            <span class="badge bg-secondary">{{ chapter.items|length }}</span>
+                        </div>
+                        
+                        <!-- Chapter Items (Lessons, Quizzes, Assignments) -->
+                        <div class="chapter-content mt-2 ms-3">
+                            {% for item in chapter.items %}
+                            <div class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %}" 
+                                 data-item-id="{{ item.id }}" data-type="{{ item.type }}">
+                                <div class="form-check me-2">
+                                    <input class="form-check-input completion-checkbox" type="checkbox" 
+                                           {% if item.completed %}checked{% endif %} 
+                                           data-item-id="{{ item.id }}">
+                                </div>
+                                <small class="flex-grow-1" style="cursor: pointer;">
+                                    <i class="fas {% if item.type == 'quiz' %}fa-question-circle 
+                                                {% elif item.type == 'assignment' %}fa-tasks 
+                                                {% else %}fa-play-circle{% endif %} me-1"></i>
+                                    {{ item.title }}
+                                </small>
+                                {% if item.duration %}
+                                <small class="text-muted ms-2">{{ item.duration }}</small>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Progress Summary -->
+            <div class="card-footer">
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: {{ progress_percentage }}%;" 
+                         aria-valuenow="{{ progress_percentage }}" 
+                         aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <small class="text-muted">Your Progress: {{ completed_items }}/{{ total_items }} ({{ progress_percentage }}%)</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-md-8 col-lg-9">
+        <!-- Course Header -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{{ url_for('student_dashboard') }}">My Courses</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('view_unit', unit_id=unit.id) }}">{{ unit.title }}</a></li>
+                        <li class="breadcrumb-item active">Learning</li>
+                    </ol>
+                </nav>
+                
+                <h4 class="card-title">{{ unit.title }}</h4>
+                <p class="text-muted">{{ unit.description }}</p>
+            </div>
+        </div>
+
+        <!-- Current Content Display -->
+        <div class="card">
+            <div class="card-header">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0" id="contentTitle">Select a lesson to begin</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-secondary me-2" id="prevBtn" disabled>
+                            <i class="fas fa-chevron-left me-1"></i>Previous
+                        </button>
+                        <button class="btn btn-sm btn-primary" id="nextBtn">
+                            Next<i class="fas fa-chevron-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <!-- Video/Lesson Content -->
+                <div id="videoContent" class="d-none">
+                    <div class="ratio ratio-16x9 mb-4">
+                        <iframe id="lessonVideo" src="" frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen></iframe>
+                    </div>
+                    <div id="videoDescription"></div>
+                </div>
+                
+                <!-- Quiz Content -->
+                <div id="quizContent" class="d-none">
+                    <div class="quiz-container">
+                        <h6>Quiz Questions</h6>
+                        <div id="quizQuestions">
+                            <!-- Quiz questions will be loaded here -->
+                        </div>
+                        <button class="btn btn-success mt-3" id="submitQuiz">Submit Quiz</button>
+                    </div>
+                </div>
+                
+                <!-- Assignment Content -->
+                <div id="assignmentContent" class="d-none">
+                    <div class="assignment-container">
+                        <h6>Assignment Instructions</h6>
+                        <div id="assignmentInstructions"></div>
+                        <div class="mt-4">
+                            <label for="assignmentSubmission" class="form-label">Submit Your Work</label>
+                            <input type="file" class="form-control" id="assignmentSubmission">
+                            <button class="btn btn-success mt-3" id="submitAssignment">Submit Assignment</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="emptyContent" class="text-center py-5">
+                    <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Welcome to Your Learning Journey</h5>
+                    <p class="text-muted">Select a lesson, quiz, or assignment from the sidebar to begin learning.</p>
+                </div>
+                
+                <!-- Mark as Complete Section -->
+                <div class="mt-4 pt-3 border-top d-none" id="completionSection">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="markComplete">
+                        <label class="form-check-label" for="markComplete">
+                            Mark this item as completed
+                        </label>
+                    </div>
+                    <button class="btn btn-success mt-2 d-none" id="saveProgress">Save Progress</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<div id="courseData" 
+     data-unit-id="{{ unit.id }}"
+     data-chapters='{{ chapters|tojson }}'
+     data-progress='{{ progress_data|tojson }}'
+     class="d-none">
+</div>
+
+<style>
+.sticky-top {
+    position: -webkit-sticky;
+    position: sticky;
+    z-index: 1020;
+}
+
+.chapter-item {
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.chapter-item:hover {
+    border-left-color: #4e73df;
+    background-color: #f8f9fa;
+}
+
+.chapter-title {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.lesson-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.lesson-item:hover {
+    background-color: #e9ecef;
+}
+
+.lesson-item.text-success {
+    background-color: #d1edff;
+}
+
+.completion-checkbox:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+
+.breadcrumb {
+    background-color: transparent;
+    padding: 0;
+}
+
+.breadcrumb-item a {
+    color: #4e73df;
+    text-decoration: none;
+}
+
+.ratio-16x9 {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#emptyContent {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const courseData = JSON.parse(document.getElementById('courseData').dataset.chapters);
+    const progressData = JSON.parse(document.getElementById('courseData').dataset.progress || '{}');
+    const unitId = document.getElementById('courseData').dataset.unitId;
+    
+    let currentItem = null;
+    let currentChapter = null;
+    
+    // Lesson item click handler
+    document.querySelectorAll('.lesson-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            if (e.target.type === 'checkbox') return;
+            
+            const itemId = this.dataset.itemId;
+            const itemType = this.dataset.type;
+            loadContent(itemId, itemType);
+        });
+    });
+    
+    // Completion checkbox handler
+    document.querySelectorAll('.completion-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const itemId = this.dataset.itemId;
+            const isCompleted = this.checked;
+            
+            updateProgress(itemId, isCompleted);
+        });
+    });
+    
+    function loadContent(itemId, itemType) {
+        // Find the item in course data
+        let targetItem = null;
+        let targetChapter = null;
+        
+        for (const chapter of courseData) {
+            for (const item of chapter.items) {
+                if (item.id == itemId) {
+                    targetItem = item;
+                    targetChapter = chapter;
+                    break;
+                }
+            }
+            if (targetItem) break;
+        }
+        
+        if (!targetItem) return;
+        
+        currentItem = targetItem;
+        currentChapter = targetChapter;
+        
+        // Update UI
+        document.getElementById('contentTitle').textContent = targetItem.title;
+        hideAllContent();
+        
+        switch(itemType) {
+            case 'lesson':
+                showLessonContent(targetItem);
+                break;
+            case 'quiz':
+                showQuizContent(targetItem);
+                break;
+            case 'assignment':
+                showAssignmentContent(targetItem);
+                break;
+        }
+        
+        // Update navigation buttons
+        updateNavigation();
+        
+        // Show completion section
+        document.getElementById('completionSection').classList.remove('d-none');
+        document.getElementById('markComplete').checked = targetItem.completed || false;
+    }
+    
+    function showLessonContent(item) {
+        document.getElementById('videoContent').classList.remove('d-none');
+        
+        if (item.video_url) {
+            // Handle YouTube URLs
+            let videoUrl = item.video_url;
+            if (videoUrl.includes('youtube.com/watch?v=')) {
+                videoUrl = videoUrl.replace('youtube.com/watch?v=', 'youtube.com/embed/');
+            } else if (videoUrl.includes('youtu.be/')) {
+                videoUrl = videoUrl.replace('youtu.be/', 'youtube.com/embed/');
+            }
+            
+            document.getElementById('lessonVideo').src = videoUrl;
+        } else if (item.video_file) {
+            // Handle uploaded video files
+            document.getElementById('lessonVideo').src = "{{ url_for('uploaded_file', filename='') }}" + item.video_file;
+        }
+        
+        document.getElementById('videoDescription').innerHTML = item.description || '<p>No additional description provided.</p>';
+    }
+    
+    function showQuizContent(item) {
+        document.getElementById('quizContent').classList.remove('d-none');
+        // Load quiz questions (simplified for example)
+        document.getElementById('quizQuestions').innerHTML = `
+            <div class="alert alert-info">
+                <p>Quiz content would be loaded here. In a real implementation, this would fetch actual quiz questions from your backend.</p>
+            </div>
+        `;
+    }
+    
+    function showAssignmentContent(item) {
+        document.getElementById('assignmentContent').classList.remove('d-none');
+        document.getElementById('assignmentInstructions').innerHTML = item.instructions || '<p>Complete the assignment as described in the course materials.</p>';
+    }
+    
+    function hideAllContent() {
+        document.getElementById('videoContent').classList.add('d-none');
+        document.getElementById('quizContent').classList.add('d-none');
+        document.getElementById('assignmentContent').classList.add('d-none');
+        document.getElementById('emptyContent').classList.add('d-none');
+    }
+    
+    function updateNavigation() {
+        // Implementation for next/previous navigation
+        // This would require tracking the current position in the course
+    }
+    
+    function updateProgress(itemId, isCompleted) {
+        // Send AJAX request to update progress
+        fetch("{{ url_for('update_progress') }}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                unit_id: unitId,
+                item_id: itemId,
+                completed: isCompleted
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI
+                const lessonItem = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (isCompleted) {
+                    lessonItem.classList.add('text-success');
+                } else {
+                    lessonItem.classList.remove('text-success');
+                }
+                
+                // Update progress display
+                updateProgressDisplay();
+            }
+        });
+    }
+    
+    function updateProgressDisplay() {
+        // This would recalculate and update the progress bar
+        // For now, we'll simulate it
+        const completed = document.querySelectorAll('.completion-checkbox:checked').length;
+        const total = document.querySelectorAll('.completion-checkbox').length;
+        const percentage = Math.round((completed / total) * 100);
+        
+        document.querySelector('.progress-bar').style.width = percentage + '%';
+        document.querySelector('.progress-bar').setAttribute('aria-valuenow', percentage);
+        document.querySelector('.card-footer small').textContent = 
+            `Your Progress: ${completed}/${total} (${percentage}%)`;
+    }
+    
+    // Mark as complete handler
+    document.getElementById('markComplete').addEventListener('change', function() {
+        if (currentItem && this.checked) {
+            updateProgress(currentItem.id, true);
+        }
+    });
+    
+    // Initialize
+    updateProgressDisplay();
+});
+</script>
+{% endblock %}
