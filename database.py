@@ -44,6 +44,68 @@ def get_db():
         conn.row_factory = sqlite3.Row
         return conn
 
+def create_learning_tables():
+    """Create tables for the learning interface - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Chapters table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chapters (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Chapter items table (lessons, quizzes, assignments)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS chapter_items (
+                id SERIAL PRIMARY KEY,
+                chapter_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                type VARCHAR(50) NOT NULL, -- 'lesson', 'quiz', 'assignment'
+                content TEXT,
+                video_url TEXT,
+                video_file VARCHAR(255),
+                instructions TEXT,
+                duration VARCHAR(50),
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Student progress tracking
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS student_progress (
+                id SERIAL PRIMARY KEY,
+                student_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                completed BOOLEAN DEFAULT FALSE,
+                completed_at TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE,
+                UNIQUE(student_id, unit_id, item_id)
+            )
+        """)
+        
+        conn.commit()
+        print("✅ Learning tables created successfully")
+        
+    except Exception as e:
+        print(f"❌ Error creating learning tables: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
 def init_db():
     """Initialize database tables"""
     conn = get_db()
@@ -176,6 +238,9 @@ def init_db():
         conn.commit()
         print("✅ Database tables initialized successfully")
         
+        # Create learning tables
+        create_learning_tables()
+        
         # Create default admin account
         create_default_admin()
         
@@ -184,6 +249,7 @@ def init_db():
         conn.rollback()
     finally:
         conn.close()
+
 def create_default_admin():
     """Ensure hbiuportal@gmail.com admin account exists"""
     conn = get_db()
@@ -207,6 +273,93 @@ def create_default_admin():
         conn.rollback()
     finally:
         conn.close()
+
+# ==================== LEARNING INTERFACE FUNCTIONS ====================
+
+def get_unit_chapters(unit_id):
+    """Get all chapters for a unit - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("SELECT * FROM chapters WHERE unit_id = %s ORDER BY order_index", (unit_id,))
+        else:
+            cursor.execute("SELECT * FROM chapters WHERE unit_id = ? ORDER BY order_index", (unit_id,))
+        chapters = cursor.fetchall()
+        return chapters
+    except Exception as e:
+        print(f"Error getting chapters: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_chapter_items(chapter_id):
+    """Get all items (lessons, quizzes, assignments) for a chapter - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("SELECT * FROM chapter_items WHERE chapter_id = %s ORDER BY order_index", (chapter_id,))
+        else:
+            cursor.execute("SELECT * FROM chapter_items WHERE chapter_id = ? ORDER BY order_index", (chapter_id,))
+        items = cursor.fetchall()
+        return items
+    except Exception as e:
+        print(f"Error getting chapter items: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_student_progress(student_id, unit_id):
+    """Get student progress for a unit - NEW FUNCTION"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("SELECT item_id, completed FROM student_progress WHERE student_id = %s AND unit_id = %s", (student_id, unit_id))
+        else:
+            cursor.execute("SELECT item_id, completed FROM student_progress WHERE student_id = ? AND unit_id = ?", (student_id, unit_id))
+        progress = cursor.fetchall()
+        # Convert to dictionary for easier lookup
+        progress_dict = {}
+        for item in progress:
+            if hasattr(item, 'keys'):  # PostgreSQL
+                progress_dict[item['item_id']] = item['completed']
+            else:  # SQLite
+                progress_dict[item[0]] = item[1]
+        return progress_dict
+    except Exception as e:
+        print(f"Error getting student progress: {e}")
+        return {}
+    finally:
+        conn.close()
+
+def update_student_progress(student_id, unit_id, item_id, completed):
+    """Update student progress for an item - NEW FUNCTION"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO student_progress (student_id, unit_id, item_id, completed, updated_at) 
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT (student_id, unit_id, item_id) 
+                DO UPDATE SET completed = %s, updated_at = NOW()
+            """, (student_id, unit_id, item_id, completed, completed))
+        else:
+            cursor.execute("""
+                INSERT OR REPLACE INTO student_progress 
+                (student_id, unit_id, item_id, completed, updated_at) 
+                VALUES (?, ?, ?, ?, datetime('now'))
+            """, (student_id, unit_id, item_id, completed))
+        conn.commit()
+        return True
+    except Exception as e:
+        print(f"Error updating progress: {e}")
+        return False
+    finally:
+        conn.close()
+
 # ==================== AUTHENTICATION FUNCTIONS ====================
 
 def verify_admin(email, password):
@@ -621,66 +774,6 @@ def get_unit_by_id(unit_id):
         return None
     finally:
         conn.close()
-def get_unit_chapters(unit_id):
-    """Get all chapters for a unit"""
-    conn = get_db()
-    cursor = conn.cursor()
-    if os.environ.get('DATABASE_URL'):
-        cursor.execute("SELECT * FROM chapters WHERE unit_id = %s ORDER BY order_index", (unit_id,))
-    else:
-        cursor.execute("SELECT * FROM chapters WHERE unit_id = ? ORDER BY order_index", (unit_id,))
-    chapters = cursor.fetchall()
-    conn.close()
-    return chapters
-
-def get_chapter_items(chapter_id):
-    """Get all items (lessons, quizzes, assignments) for a chapter"""
-    conn = get_db()
-    cursor = conn.cursor()
-    if os.environ.get('DATABASE_URL'):
-        cursor.execute("SELECT * FROM chapter_items WHERE chapter_id = %s ORDER BY order_index", (chapter_id,))
-    else:
-        cursor.execute("SELECT * FROM chapter_items WHERE chapter_id = ? ORDER BY order_index", (chapter_id,))
-    items = cursor.fetchall()
-    conn.close()
-    return items
-
-def get_student_progress(student_id, unit_id):
-    """Get student progress for a unit"""
-    conn = get_db()
-    cursor = conn.cursor()
-    if os.environ.get('DATABASE_URL'):
-        cursor.execute("SELECT * FROM student_progress WHERE student_id = %s AND unit_id = %s", (student_id, unit_id))
-    else:
-        cursor.execute("SELECT * FROM student_progress WHERE student_id = ? AND unit_id = ?", (student_id, unit_id))
-    progress = cursor.fetchall()
-    conn.close()
-    return progress
-
-def update_student_progress(student_id, unit_id, item_id, completed):
-    """Update student progress for an item"""
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        if os.environ.get('DATABASE_URL'):
-            cursor.execute("""
-                INSERT INTO student_progress (student_id, unit_id, item_id, completed, updated_at) 
-                VALUES (%s, %s, %s, %s, NOW())
-                ON CONFLICT(student_id, unit_id, item_id) 
-                DO UPDATE SET completed = %s, updated_at = NOW()
-            """, (student_id, unit_id, item_id, completed, completed))
-        else:
-            cursor.execute("""
-                INSERT OR REPLACE INTO student_progress 
-                (student_id, unit_id, item_id, completed, updated_at) 
-                VALUES (?, ?, ?, ?, datetime('now'))
-            """, (student_id, unit_id, item_id, completed))
-        conn.commit()
-        conn.close()
-        return True
-    except Exception as e:
-        print(f"Error updating progress: {e}")
-        return False
 
 def register_student_unit(student_id, unit_code):
     """Register student for a unit"""
@@ -876,6 +969,7 @@ def get_unit_students(unit_id):
         return []
     finally:
         conn.close()
+
 # ADD THESE NEW FUNCTIONS TO YOUR EXISTING database.py FILE
 
 def get_student_by_google_id(google_id):
