@@ -685,20 +685,7 @@ def register_unit():
     
     return redirect(url_for('view_units'))
 
-@app.route("/unit/<int:unit_id>")
-def unit_detail(unit_id):
-    unit = db.get_unit_by_id(unit_id)
-    if not unit:
-        flash('Unit not found', 'danger')
-        return redirect(url_for('home'))
-    
-    resources = db.get_unit_resources(unit_id)
-    
-    students = None
-    if 'user_type' in session and session['user_type'] == 'lecturer':
-        students = db.get_unit_students(unit_id)
-    
-    return render_template("unit_detail.html", unit=unit, resources=resources, students=students)
+# ==================== FIXED: REMOVED DUPLICATE ROUTE ====================
 @app.route("/unit/<int:unit_id>")
 def unit_detail(unit_id):
     unit = db.get_unit_by_id(unit_id)
@@ -1117,6 +1104,7 @@ HBIU Security Team
             flash('Login error. Please try again.', 'error')
     
     return render_template('admin_login.html')
+
 @app.route('/update-admin-email')
 def update_admin_email():
     """Update existing admin email to hbiuportal@gmail.com"""
@@ -1146,6 +1134,7 @@ def update_admin_email():
         
     except Exception as e:
         return f"❌ Error updating admin: {str(e)}"
+
 @app.route('/admin/verify-code', methods=['GET', 'POST'])
 def admin_verify_code():
     """Verify email code for admin login - NEW ROUTE"""
@@ -1250,6 +1239,7 @@ HBIU Security Team
         flash('Error sending verification email. Please try again.', 'error')
     
     return redirect(url_for('admin_verify_code'))
+
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
