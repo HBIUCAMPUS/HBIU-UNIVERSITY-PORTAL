@@ -621,6 +621,66 @@ def get_unit_by_id(unit_id):
         return None
     finally:
         conn.close()
+def get_unit_chapters(unit_id):
+    """Get all chapters for a unit"""
+    conn = get_db()
+    cursor = conn.cursor()
+    if os.environ.get('DATABASE_URL'):
+        cursor.execute("SELECT * FROM chapters WHERE unit_id = %s ORDER BY order_index", (unit_id,))
+    else:
+        cursor.execute("SELECT * FROM chapters WHERE unit_id = ? ORDER BY order_index", (unit_id,))
+    chapters = cursor.fetchall()
+    conn.close()
+    return chapters
+
+def get_chapter_items(chapter_id):
+    """Get all items (lessons, quizzes, assignments) for a chapter"""
+    conn = get_db()
+    cursor = conn.cursor()
+    if os.environ.get('DATABASE_URL'):
+        cursor.execute("SELECT * FROM chapter_items WHERE chapter_id = %s ORDER BY order_index", (chapter_id,))
+    else:
+        cursor.execute("SELECT * FROM chapter_items WHERE chapter_id = ? ORDER BY order_index", (chapter_id,))
+    items = cursor.fetchall()
+    conn.close()
+    return items
+
+def get_student_progress(student_id, unit_id):
+    """Get student progress for a unit"""
+    conn = get_db()
+    cursor = conn.cursor()
+    if os.environ.get('DATABASE_URL'):
+        cursor.execute("SELECT * FROM student_progress WHERE student_id = %s AND unit_id = %s", (student_id, unit_id))
+    else:
+        cursor.execute("SELECT * FROM student_progress WHERE student_id = ? AND unit_id = ?", (student_id, unit_id))
+    progress = cursor.fetchall()
+    conn.close()
+    return progress
+
+def update_student_progress(student_id, unit_id, item_id, completed):
+    """Update student progress for an item"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO student_progress (student_id, unit_id, item_id, completed, updated_at) 
+                VALUES (%s, %s, %s, %s, NOW())
+                ON CONFLICT(student_id, unit_id, item_id) 
+                DO UPDATE SET completed = %s, updated_at = NOW()
+            """, (student_id, unit_id, item_id, completed, completed))
+        else:
+            cursor.execute("""
+                INSERT OR REPLACE INTO student_progress 
+                (student_id, unit_id, item_id, completed, updated_at) 
+                VALUES (?, ?, ?, ?, datetime('now'))
+            """, (student_id, unit_id, item_id, completed))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error updating progress: {e}")
+        return False
 
 def register_student_unit(student_id, unit_code):
     """Register student for a unit"""
