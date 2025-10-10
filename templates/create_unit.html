@@ -26,21 +26,47 @@
         <!-- Featured Image -->
         <div class="mb-2">
           <label>Featured Image</label>
-          <div class="custom-file">
-            <input type="file" class="custom-file-input" id="featuredImage" name="featured_image" accept="image/*">
-            <label class="custom-file-label" for="featuredImage">Choose image file</label>
+          <div class="file-upload-wrapper">
+            <div class="file-upload-area">
+              <div class="file-upload-icon">📷</div>
+              <div class="file-upload-text">
+                <span class="file-main-text">Click to upload or drag and drop</span>
+                <span class="file-sub-text">PNG, JPG, GIF up to 10MB</span>
+              </div>
+              <input type="file" class="file-upload-input" id="featuredImage" name="featured_image" accept="image/*">
+            </div>
+            <div class="file-name-display" id="featuredImageName"></div>
           </div>
-          <small class="form-text text-muted">Supported formats: PNG, JPG, GIF up to 10MB</small>
         </div>
         
         <!-- Intro Video -->
         <div class="mb-2">
           <label>Intro Video</label>
-          <div class="custom-file">
-            <input type="file" class="custom-file-input" id="introVideo" name="intro_video" accept="video/*">
-            <label class="custom-file-label" for="introVideo">Choose video file</label>
+          
+          <!-- Video URL Option -->
+          <div class="mb-3">
+            <label class="form-label">YouTube or Video URL</label>
+            <input type="url" class="form-control" name="video_url" placeholder="https://www.youtube.com/watch?v=... or any video URL">
+            <small class="form-text text-muted">Paste a YouTube link or any video URL</small>
           </div>
-          <small class="form-text text-muted">Supported formats: MP4, WebM up to 100MB</small>
+          
+          <!-- Or separator -->
+          <div class="text-center my-3">
+            <span class="text-muted">OR</span>
+          </div>
+          
+          <!-- Video File Upload -->
+          <div class="file-upload-wrapper">
+            <div class="file-upload-area">
+              <div class="file-upload-icon">🎬</div>
+              <div class="file-upload-text">
+                <span class="file-main-text">Upload video file</span>
+                <span class="file-sub-text">MP4, WebM up to 100MB</span>
+              </div>
+              <input type="file" class="file-upload-input" id="introVideo" name="intro_video" accept="video/*">
+            </div>
+            <div class="file-name-display" id="introVideoName"></div>
+          </div>
         </div>
         
         <button class="btn btn-royal-blue mt-2 w-100">Create Unit</button>
@@ -50,15 +76,51 @@
 </div>
 
 <script>
-  // Update file input labels to show selected file names
+  // Enhanced file upload functionality
   document.addEventListener('DOMContentLoaded', function() {
-    const fileInputs = document.querySelectorAll('.custom-file-input');
+    const fileInputs = document.querySelectorAll('.file-upload-input');
+    const uploadAreas = document.querySelectorAll('.file-upload-area');
     
-    fileInputs.forEach(input => {
+    fileInputs.forEach((input, index) => {
+      const fileNameDisplay = input.parentElement.nextElementSibling;
+      const uploadArea = uploadAreas[index];
+      
+      // Update file name display
       input.addEventListener('change', function() {
-        const fileName = this.files[0] ? this.files[0].name : 'Choose file';
-        const label = this.nextElementSibling;
-        label.textContent = fileName;
+        const fileName = this.files[0] ? this.files[0].name : '';
+        fileNameDisplay.textContent = fileName;
+        
+        if (fileName) {
+          uploadArea.classList.add('file-selected');
+        } else {
+          uploadArea.classList.remove('file-selected');
+        }
+      });
+      
+      // Drag and drop functionality
+      uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+      });
+      
+      uploadArea.addEventListener('dragleave', function() {
+        this.classList.remove('drag-over');
+      });
+      
+      uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        
+        if (e.dataTransfer.files.length) {
+          input.files = e.dataTransfer.files;
+          const event = new Event('change');
+          input.dispatchEvent(event);
+        }
+      });
+      
+      // Click to open file dialog
+      uploadArea.addEventListener('click', function() {
+        input.click();
       });
     });
   });
@@ -69,13 +131,111 @@
     border-top: 3px solid #4e73df;
   }
   
-  .custom-file-label::after {
-    content: "Browse";
-  }
-  
-  .form-control:focus, .custom-file-input:focus ~ .custom-file-label {
+  .form-control:focus {
     border-color: #4e73df;
     box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+  }
+  
+  /* Enhanced File Upload Styles */
+  .file-upload-wrapper {
+    margin-bottom: 10px;
+  }
+  
+  .file-upload-area {
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 25px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+    position: relative;
+  }
+  
+  .file-upload-area:hover {
+    border-color: #4e73df;
+    background-color: #f0f4ff;
+  }
+  
+  .file-upload-area.drag-over {
+    border-color: #4e73df;
+    background-color: #e8f0fe;
+    transform: scale(1.02);
+  }
+  
+  .file-upload-area.file-selected {
+    border-color: #28a745;
+    background-color: #f0fff4;
+  }
+  
+  .file-upload-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    color: #6c757d;
+  }
+  
+  .file-upload-area:hover .file-upload-icon {
+    color: #4e73df;
+  }
+  
+  .file-upload-text {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .file-main-text {
+    font-weight: 600;
+    color: #495057;
+  }
+  
+  .file-sub-text {
+    font-size: 0.875rem;
+    color: #6c757d;
+  }
+  
+  .file-upload-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+  }
+  
+  .file-name-display {
+    padding: 8px 12px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 0.875rem;
+    color: #495057;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+  
+  .btn-royal-blue {
+    background-color: #4e73df;
+    border-color: #4e73df;
+    color: white;
+    font-weight: 600;
+    padding: 12px;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-royal-blue:hover {
+    background-color: #2e59d9;
+    border-color: #2e59d9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  }
+  
+  .form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
   }
 </style>
 {% endblock %}
