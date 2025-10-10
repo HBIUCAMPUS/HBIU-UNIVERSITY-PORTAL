@@ -699,30 +699,41 @@ def unit_detail(unit_id):
         students = db.get_unit_students(unit_id)
     
     return render_template("unit_detail.html", unit=unit, resources=resources, students=students)
-    @app.route('/unit/<int:unit_id>/learn')
+@app.route("/unit/<int:unit_id>")
+def unit_detail(unit_id):
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('home'))
+    
+    resources = db.get_unit_resources(unit_id)
+    
+    students = None
+    if 'user_type' in session and session['user_type'] == 'lecturer':
+        students = db.get_unit_students(unit_id)
+    
+    return render_template("unit_detail.html", unit=unit, resources=resources, students=students)
+
+@app.route('/unit/<int:unit_id>/learn')
 def learning_interface(unit_id):
     # Get unit data
-    unit = db.execute("SELECT * FROM units WHERE id = ?", (unit_id,)).fetchone()
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('home'))
     
     # Get chapters and their items (lessons, quizzes, assignments)
-    chapters = db.execute("""
-        SELECT c.*, 
-               (SELECT COUNT(*) FROM chapter_items WHERE chapter_id = c.id) as item_count
-        FROM chapters c 
-        WHERE c.unit_id = ?
-        ORDER BY c.order_index
-    """, (unit_id,)).fetchall()
+    # Using your existing database functions instead of direct SQL
+    chapters = db.get_unit_chapters(unit_id)
     
-    # Get chapter items
+    # Get chapter items for each chapter
     for chapter in chapters:
-        chapter.items = db.execute("""
-            SELECT * FROM chapter_items 
-            WHERE chapter_id = ? 
-            ORDER BY order_index
-        """, (chapter['id'],)).fetchall()
+        chapter['items'] = db.get_chapter_items(chapter['id'])
     
     # Get student progress (if implemented)
-    progress_data = {}  # You'll need to implement this based on your database structure
+    progress_data = {}
+    if 'user_id' in session and session['user_type'] == 'student':
+        progress_data = db.get_student_progress(session['user_id'], unit_id)
     
     return render_template('learning_interface.html', 
                          unit=unit, 
@@ -730,8 +741,10 @@ def learning_interface(unit_id):
                          progress_data=progress_data)
 
 @app.route('/update_progress', methods=['POST'])
-@login_required
 def update_progress():
+    if 'user_id' not in session or session['user_type'] != 'student':
+        return jsonify({'success': False, 'error': 'Not logged in as student'})
+    
     if request.method == 'POST':
         data = request.get_json()
         unit_id = data.get('unit_id')
@@ -739,15 +752,17 @@ def update_progress():
         completed = data.get('completed')
         
         # Update progress in database
-        # This is a basic implementation - adjust based on your schema
         try:
-            db.execute("""
-                INSERT OR REPLACE INTO student_progress 
-                (student_id, unit_id, item_id, completed, updated_at) 
-                VALUES (?, ?, ?, ?, datetime('now'))
-            """, (session['user_id'], unit_id, item_id, completed))
-            db.commit()
-            return jsonify({'success': True})
+            success = db.update_student_progress(
+                session['user_id'], 
+                unit_id, 
+                item_id, 
+                completed
+            )
+            if success:
+                return jsonify({'success': True})
+            else:
+                return jsonify({'success': False, 'error': 'Database update failed'})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
 
