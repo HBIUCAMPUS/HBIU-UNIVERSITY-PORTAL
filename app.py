@@ -699,6 +699,57 @@ def unit_detail(unit_id):
         students = db.get_unit_students(unit_id)
     
     return render_template("unit_detail.html", unit=unit, resources=resources, students=students)
+    @app.route('/unit/<int:unit_id>/learn')
+def learning_interface(unit_id):
+    # Get unit data
+    unit = db.execute("SELECT * FROM units WHERE id = ?", (unit_id,)).fetchone()
+    
+    # Get chapters and their items (lessons, quizzes, assignments)
+    chapters = db.execute("""
+        SELECT c.*, 
+               (SELECT COUNT(*) FROM chapter_items WHERE chapter_id = c.id) as item_count
+        FROM chapters c 
+        WHERE c.unit_id = ?
+        ORDER BY c.order_index
+    """, (unit_id,)).fetchall()
+    
+    # Get chapter items
+    for chapter in chapters:
+        chapter.items = db.execute("""
+            SELECT * FROM chapter_items 
+            WHERE chapter_id = ? 
+            ORDER BY order_index
+        """, (chapter['id'],)).fetchall()
+    
+    # Get student progress (if implemented)
+    progress_data = {}  # You'll need to implement this based on your database structure
+    
+    return render_template('learning_interface.html', 
+                         unit=unit, 
+                         chapters=chapters, 
+                         progress_data=progress_data)
+
+@app.route('/update_progress', methods=['POST'])
+@login_required
+def update_progress():
+    if request.method == 'POST':
+        data = request.get_json()
+        unit_id = data.get('unit_id')
+        item_id = data.get('item_id')
+        completed = data.get('completed')
+        
+        # Update progress in database
+        # This is a basic implementation - adjust based on your schema
+        try:
+            db.execute("""
+                INSERT OR REPLACE INTO student_progress 
+                (student_id, unit_id, item_id, completed, updated_at) 
+                VALUES (?, ?, ?, ?, datetime('now'))
+            """, (session['user_id'], unit_id, item_id, completed))
+            db.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
 
 @app.route("/lecturer/unit/<int:unit_id>/results", methods=['GET', 'POST'])
 def unit_results(unit_id):
