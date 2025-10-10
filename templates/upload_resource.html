@@ -7,8 +7,8 @@
     <!-- Course Title Section -->
     <div class="card mb-4">
       <div class="card-body">
-        <h5 class="card-title">TRAUMA RECOVERY</h5>
-        <p class="card-text">12 TECHNIQUES HELP YOU MOVE FORWARD AFTER A TRAUMA</p>
+        <h5 class="card-title" id="courseTitle">{{ course_title|default("COURSE TITLE") }}</h5>
+        <p class="card-text" id="courseDescription">{{ course_description|default("Course description will appear here") }}</p>
       </div>
     </div>
 
@@ -77,6 +77,8 @@
 .card-title {
   color: #2c3e50;
   font-weight: 600;
+  font-size: 1.5rem;
+  text-transform: uppercase;
 }
 
 .card-text {
@@ -99,4 +101,19 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 </style>
+
+<script>
+// This script would typically be handled by your backend templating
+// For demonstration, you can set the course title dynamically
+document.addEventListener('DOMContentLoaded', function() {
+  // In a real application, these values would come from your backend
+  // For now, you can set them manually or keep the template variables
+  const courseTitle = document.getElementById('courseTitle');
+  const courseDescription = document.getElementById('courseDescription');
+  
+  // Example of setting values (remove this in production)
+  // courseTitle.textContent = "TRAUMA RECOVERY";
+  // courseDescription.textContent = "12 TECHNIQUES HELP YOU MOVE FORWARD AFTER A TRAUMA";
+});
+</script>
 {% endblock %}
