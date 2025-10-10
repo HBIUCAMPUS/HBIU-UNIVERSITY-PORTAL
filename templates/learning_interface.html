@@ -67,7 +67,7 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb">
                         <li class="breadcrumb-item"><a href="{{ url_for('student_dashboard') }}">My Courses</a></li>
-                        <li class="breadcrumb-item"><a href="{{ url_for('view_unit', unit_id=unit.id) }}">{{ unit.title }}</a></li>
+                        <li class="breadcrumb-item"><a href="{{ url_for('unit_detail', unit_id=unit.id) }}">{{ unit.title }}</a></li>
                         <li class="breadcrumb-item active">Learning</li>
                     </ol>
                 </nav>
@@ -393,7 +393,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `Your Progress: ${completed}/${total} (${percentage}%)`;
     }
     
-    // Mark as complete handler
+    // Mark as complete handle
     document.getElementById('markComplete').addEventListener('change', function() {
         if (currentItem && this.checked) {
             updateProgress(currentItem.id, true);
