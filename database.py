@@ -156,7 +156,7 @@ def init_db():
             )
             ''',
             
-            # Units table (EXACTLY THE SAME)
+            # Units table
             '''
             CREATE TABLE IF NOT EXISTS units (
                 id SERIAL PRIMARY KEY,
@@ -167,7 +167,7 @@ def init_db():
             )
             ''',
             
-            # Student units junction table (EXACTLY THE SAME)
+            # Student units junction table
             '''
             CREATE TABLE IF NOT EXISTS student_units (
                 id SERIAL PRIMARY KEY,
@@ -178,7 +178,7 @@ def init_db():
             )
             ''',
             
-            # Results table (EXACTLY THE SAME)
+            # Results table
             '''
             CREATE TABLE IF NOT EXISTS results (
                 id SERIAL PRIMARY KEY,
@@ -191,7 +191,7 @@ def init_db():
             )
             ''',
             
-            # Resources table (EXACTLY THE SAME)
+            # Resources table
             '''
             CREATE TABLE IF NOT EXISTS resources (
                 id SERIAL PRIMARY KEY,
@@ -202,7 +202,7 @@ def init_db():
             )
             ''',
             
-            # Activities table (EXACTLY THE SAME)
+            # Activities table
             '''
             CREATE TABLE IF NOT EXISTS activities (
                 id SERIAL PRIMARY KEY,
@@ -214,7 +214,7 @@ def init_db():
             )
             ''',
             
-            # Admin activity log (EXACTLY THE SAME)
+            # Admin activity log
             '''
             CREATE TABLE IF NOT EXISTS admin_activity_log (
                 id SERIAL PRIMARY KEY,
@@ -224,6 +224,48 @@ def init_db():
                 ip_address TEXT,
                 timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
+            ''',
+
+            # NEW: Lessons table
+            '''
+            CREATE TABLE IF NOT EXISTS lessons (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER REFERENCES units(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                content TEXT,
+                video_file TEXT,
+                notes_file TEXT,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''',
+
+            # NEW: Quizzes table
+            '''
+            CREATE TABLE IF NOT EXISTS quizzes (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER REFERENCES units(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                description TEXT,
+                duration INTEGER,
+                quiz_file TEXT,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''',
+
+            # NEW: Assignments table
+            '''
+            CREATE TABLE IF NOT EXISTS assignments (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER REFERENCES units(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                instructions TEXT,
+                due_date DATE,
+                assignment_file TEXT,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
             '''
         ]
         
@@ -232,12 +274,12 @@ def init_db():
             try:
                 cursor.execute(sql)
             except Exception as e:
-                print(f"Table creation warning: {e}")
+                print(f"⚠️ Table creation warning: {e}")
                 continue
         
         conn.commit()
         print("✅ Database tables initialized successfully")
-        
+
         # Create learning tables
         create_learning_tables()
         
@@ -249,6 +291,7 @@ def init_db():
         conn.rollback()
     finally:
         conn.close()
+
 
 def create_default_admin():
     """Ensure hbiuportal@gmail.com admin account exists"""
@@ -1455,4 +1498,202 @@ def save_jotform_form(form_id, form_title, form_type, unit_id=None, assignment_i
 
 def get_jotform_forms_by_unit(unit_id):
     """Get JotForm forms - placeholder"""
+# ==================== NEW: LESSON, QUIZ, ASSIGNMENT FUNCTIONS ====================
+
+def add_lesson(unit_id, title, content, video_filename, notes_filename, created_by):
+    """Insert a new lesson into the database"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO lessons (unit_id, title, content, video_file, notes_file, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """, (unit_id, title, content, video_filename, notes_filename, created_by))
+        else:
+            cursor.execute("""
+                INSERT INTO lessons (unit_id, title, content, video_file, notes_file, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """, (unit_id, title, content, video_filename, notes_filename, created_by))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"DB Error (add_lesson): {e}")
+        return False
+
+
+def add_quiz(unit_id, title, description, duration, quiz_filename, created_by):
+    """Insert a new quiz into the database"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO quizzes (unit_id, title, description, duration, quiz_file, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """, (unit_id, title, description, duration, quiz_filename, created_by))
+        else:
+            cursor.execute("""
+                INSERT INTO quizzes (unit_id, title, description, duration, quiz_file, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """, (unit_id, title, description, duration, quiz_filename, created_by))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"DB Error (add_quiz): {e}")
+        return False
+
+
+def add_assignment(unit_id, title, instructions, due_date, assignment_filename, created_by):
+    """Insert a new assignment into the database"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO assignments (unit_id, title, instructions, due_date, assignment_file, created_by, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            """, (unit_id, title, instructions, due_date, assignment_filename, created_by))
+        else:
+            cursor.execute("""
+                INSERT INTO assignments (unit_id, title, instructions, due_date, assignment_file, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+            """, (unit_id, title, instructions, due_date, assignment_filename, created_by))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"DB Error (add_assignment): {e}")
+        return False
+# ==================== VIEW & FETCH HELPERS ====================
+
+def get_lessons_by_unit(unit_id):
+    """Fetch all lessons for a specific unit"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                SELECT id, title, content, video_file, notes_file, created_at
+                FROM lessons
+                WHERE unit_id = %s
+                ORDER BY created_at DESC
+            """, (unit_id,))
+        else:
+            cursor.execute("""
+                SELECT id, title, content, video_file, notes_file, created_at
+                FROM lessons
+                WHERE unit_id = ?
+                ORDER BY created_at DESC
+            """, (unit_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    except Exception as e:
+        print(f"DB Error (get_lessons_by_unit): {e}")
+        return []
+
+
+def get_quizzes_by_unit(unit_id):
+    """Fetch all quizzes for a specific unit"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                SELECT id, title, description, duration, quiz_file, created_at
+                FROM quizzes
+                WHERE unit_id = %s
+                ORDER BY created_at DESC
+            """, (unit_id,))
+        else:
+            cursor.execute("""
+                SELECT id, title, description, duration, quiz_file, created_at
+                FROM quizzes
+                WHERE unit_id = ?
+                ORDER BY created_at DESC
+            """, (unit_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    except Exception as e:
+        print(f"DB Error (get_quizzes_by_unit): {e}")
+        return []
+
+
+def get_assignments_by_unit(unit_id):
+    """Fetch all assignments for a specific unit"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                SELECT id, title, instructions, due_date, assignment_file, created_at
+                FROM assignments
+                WHERE unit_id = %s
+                ORDER BY created_at DESC
+            """, (unit_id,))
+        else:
+            cursor.execute("""
+                SELECT id, title, instructions, due_date, assignment_file, created_at
+                FROM assignments
+                WHERE unit_id = ?
+                ORDER BY created_at DESC
+            """, (unit_id,))
+        rows = cursor.fetchall()
+        conn.close()
+        return rows
+    except Exception as e:
+        print(f"DB Error (get_assignments_by_unit): {e}")
+        return []
+
+
+# ==================== EDIT / DELETE HELPERS (OPTIONAL) ====================
+
+def update_lesson(lesson_id, title, content, video_file=None, notes_file=None):
+    """Edit an existing lesson"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                UPDATE lessons
+                SET title = %s, content = %s, video_file = COALESCE(%s, video_file),
+                    notes_file = COALESCE(%s, notes_file)
+                WHERE id = %s
+            """, (title, content, video_file, notes_file, lesson_id))
+        else:
+            cursor.execute("""
+                UPDATE lessons
+                SET title = ?, content = ?, video_file = COALESCE(?, video_file),
+                    notes_file = COALESCE(?, notes_file)
+                WHERE id = ?
+            """, (title, content, video_file, notes_file, lesson_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"DB Error (update_lesson): {e}")
+        return False
+
+
+def delete_lesson(lesson_id):
+    """Delete a lesson"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("DELETE FROM lessons WHERE id = %s", (lesson_id,))
+        else:
+            cursor.execute("DELETE FROM lessons WHERE id = ?", (lesson_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"DB Error (delete_lesson): {e}")
+        return False
+
+
     return []
