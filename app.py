@@ -818,6 +818,125 @@ def student_results():
 @app.route("/test")
 def test():
     return "✅ Flask is working and connected to database!"
+# ---------- EXAM: CREATE (lecturer/admin) ----------
+@app.route('/unit/<int:unit_id>/exam/create', methods=['GET','POST'])
+def exam_create(unit_id):
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer','admin']:
+        flash('Please log in as lecturer or admin', 'danger')
+        return redirect(url_for('login'))
+
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger'); return redirect(url_for('home'))
+
+    lesson_count = db.count_lessons_in_unit(unit_id)
+    can_create = lesson_count >= 10
+
+    if request.method == 'POST':
+        if not can_create:
+            flash('Add at least 10 lessons before creating the exam.', 'warning')
+            return redirect(url_for('exam_create', unit_id=unit_id))
+
+        title = request.form.get('title','Final Examination').strip()
+        instructions = request.form.get('instructions','')
+        duration = int(request.form.get('duration', '60') or 60)
+        total_marks = int(request.form.get('total_marks','100') or 100)
+
+        try:
+            # create exam + item
+            exam_id, exam_item_id = db.create_exam(unit_id, title, instructions, duration, total_marks, session['user_id'])
+
+            # parse questions JSON
+            questions_json = request.form.get('questions_json','').strip()
+            questions = json.loads(questions_json) if questions_json else []
+            # normalize
+            for i,q in enumerate(questions, start=1):
+                q['position'] = q.get('position', i)
+                if q.get('qtype') == 'tf' and isinstance(q.get('correct'), bool):
+                    q['correct'] = 'true' if q['correct'] else 'false'
+            if questions:
+                db.add_exam_questions(exam_id, questions)
+
+            flash('Final Exam created successfully!', 'success')
+            return redirect(url_for('learning_interface', unit_id=unit_id))
+        except Exception as e:
+            print('EXAM CREATE ERROR:', e)
+            flash('Error creating exam. Check your JSON and try again.', 'danger')
+
+    return render_template('add_exam.html', unit=unit, can_create=can_create, lesson_count=lesson_count)
+
+# ---------- EXAM: LANDING (student) ----------
+@app.route('/unit/<int:unit_id>/exam')
+def exam_landing(unit_id):
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger'); return redirect(url_for('home'))
+
+    exam = db.get_exam_by_unit(unit_id)
+    if not exam:
+        flash('Final Exam not available yet.', 'info')
+        return redirect(url_for('learning_interface', unit_id=unit_id))
+
+    # unlocked if 100% progress of non-exam items
+    chapters = db.get_unit_chapters(unit_id) or []
+    for ch in chapters:
+        ch['items'] = db.get_chapter_items(ch['id']) or []
+    # compute
+    progress_map = {}
+    if 'user_id' in session and session.get('user_type') == 'student':
+        progress_map = db.get_student_progress(session['user_id'], unit_id) or {}
+    total = sum(1 for ch in chapters for it in ch['items'] if it.get('type') != 'exam')
+    done = sum(1 for ch in chapters for it in ch['items'] if it.get('type') != 'exam' and progress_map.get(it['id']))
+    unlocked = (total>0 and done==total)
+
+    return render_template('exam_landing.html', unit=unit, exam=exam, unlocked=unlocked)
+
+# ---------- EXAM: START (student) ----------
+@app.route('/unit/<int:unit_id>/exam/start')
+def exam_start(unit_id):
+    if 'user_id' not in session or session.get('user_type') != 'student':
+        flash('Please log in as a student', 'danger')
+        return redirect(url_for('login'))
+
+    unit = db.get_unit_by_id(unit_id)
+    exam = db.get_exam_by_unit(unit_id)
+    if not unit or not exam:
+        flash('Exam not available.', 'danger'); return redirect(url_for('learning_interface', unit_id=unit_id))
+
+    # (Optionally) enforce unlock again
+    # ...
+    questions = db.get_exam_questions(exam['id'])
+    return render_template('exam_take.html', unit=unit, exam=exam, questions=questions)
+
+# ---------- EXAM: SUBMIT (student) ----------
+@app.route('/unit/<int:unit_id>/exam/submit', methods=['POST'])
+def exam_submit(unit_id):
+    if 'user_id' not in session or session.get('user_type') != 'student':
+        flash('Please log in as a student', 'danger')
+        return redirect(url_for('login'))
+
+    unit = db.get_unit_by_id(unit_id)
+    exam = db.get_exam_by_unit(unit_id)
+    if not unit or not exam:
+        flash('Exam not available.', 'danger'); return redirect(url_for('learning_interface', unit_id=unit_id))
+
+    # collect answers
+    answers = {}
+    for k,v in request.form.items():
+        if k.startswith('q_'):
+            qid = k.split('_',1)[1]
+            answers[qid] = v
+
+    score, total = db.save_exam_attempt_and_score(exam['id'], session['user_id'], answers)
+
+    # mark progress for the exam item as completed
+    try:
+        db.update_student_progress(session['user_id'], unit_id, exam['item_id'], True)
+    except Exception as e:
+        print('Progress mark error (exam):', e)
+
+    return render_template('exam_result.html', unit=unit, exam=exam, score=score, total=total)
+
 # ==================== NEW: LESSON, QUIZ, ASSIGNMENT ROUTES ====================
 
 @app.route('/unit/<int:unit_id>/add-lesson', methods=['GET', 'POST'])
