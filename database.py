@@ -1694,6 +1694,147 @@ def delete_lesson(lesson_id):
     except Exception as e:
         print(f"DB Error (delete_lesson): {e}")
         return False
+def count_lessons_in_unit(unit_id:int)->int:
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+    sql = "SELECT COUNT(*) FROM learning_items WHERE unit_id = %s AND type = 'lesson'" if pg else \
+          "SELECT COUNT(*) FROM learning_items WHERE unit_id = ? AND type = 'lesson'"
+    cur.execute(sql, (unit_id,))
+    n = cur.fetchone()[0]
+    conn.close()
+    return n or 0
+
+def get_or_create_exam_chapter(unit_id:int):
+    """Ensure a chapter named 'Final Examination' exists."""
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+
+    # find
+    sql = "SELECT id FROM learning_chapters WHERE unit_id=%s AND title='Final Examination'" if pg else \
+          "SELECT id FROM learning_chapters WHERE unit_id=? AND title='Final Examination'"
+    cur.execute(sql, (unit_id,))
+    row = cur.fetchone()
+    if row: 
+        cid = row[0]
+    else:
+        ins = "INSERT INTO learning_chapters (unit_id, title, position) VALUES (%s,%s,%s) RETURNING id" if pg else \
+              "INSERT INTO learning_chapters (unit_id, title, position) VALUES (?,?,?)"
+        if pg:
+            cur.execute(ins, (unit_id,'Final Examination', 9999))
+            cid = cur.fetchone()[0]
+        else:
+            cur.execute(ins, (unit_id,'Final Examination', 9999))
+            cid = cur.lastrowid
+        conn.commit()
+    conn.close()
+    return cid
+
+def create_exam(unit_id:int, title:str, instructions:str, duration_minutes:int, total_marks:int, created_by:int):
+    """Create learning_item(type='exam') + exams row; returns exam_id and exam_item_id."""
+    chapter_id = get_or_create_exam_chapter(unit_id)
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+
+    # learning item for exam
+    ins_item = ("INSERT INTO learning_items (chapter_id, unit_id, type, title, position, created_by) "
+                "VALUES (%s,%s,'exam',%s,9999,%s) RETURNING id") if pg else \
+               "INSERT INTO learning_items (chapter_id, unit_id, type, title, position, created_by) VALUES (?,?,?,?,?,?)"
+    if pg:
+        cur.execute(ins_item, (chapter_id, unit_id, title, created_by))
+        exam_item_id = cur.fetchone()[0]
+    else:
+        cur.execute(ins_item, (chapter_id, unit_id, title, 9999, created_by))
+        exam_item_id = cur.lastrowid
+
+    # exams row
+    ins_exam = ("INSERT INTO exams (unit_id, item_id, title, instructions, duration_minutes, total_marks, is_published) "
+                "VALUES (%s,%s,%s,%s,%s,%s, FALSE) RETURNING id") if pg else \
+               "INSERT INTO exams (unit_id, item_id, title, instructions, duration_minutes, total_marks, is_published) VALUES (?,?,?,?,?,?,0)"
+    params = (unit_id, exam_item_id, title, instructions, duration_minutes, total_marks)
+    if pg:
+        cur.execute(ins_exam, params)
+        exam_id = cur.fetchone()[0]
+    else:
+        cur.execute(ins_exam, params)
+        exam_id = cur.lastrowid
+
+    conn.commit(); conn.close()
+    return exam_id, exam_item_id
+
+def add_exam_questions(exam_id:int, questions:list):
+    """
+    questions: list of dicts:
+      { 'qtype':'mcq'|'tf'|'text', 'question': '...', 'options': ['A','B'] (mcq only),
+        'correct': 'A'|'true'|None, 'marks': 2, 'position':1 }
+    """
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+    sql = "INSERT INTO exam_questions (exam_id, qtype, question, options_json, correct_answer, marks, position) VALUES (%s,%s,%s,%s,%s,%s,%s)" if pg else \
+          "INSERT INTO exam_questions (exam_id, qtype, question, options_json, correct_answer, marks, position) VALUES (?,?,?,?,?,?,?)"
+    for q in questions:
+        opts = json.dumps(q.get('options')) if q.get('options') is not None else None
+        cur.execute(sql, (exam_id, q['qtype'], q['question'], opts, str(q.get('correct')) if q.get('correct') is not None else None,
+                          int(q.get('marks',1)), int(q.get('position',0))))
+    conn.commit(); conn.close()
+
+def get_exam_by_unit(unit_id:int):
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+    sql = "SELECT id, item_id, title, instructions, duration_minutes, total_marks, is_published FROM exams WHERE unit_id=%s" if pg else \
+          "SELECT id, item_id, title, instructions, duration_minutes, total_marks, is_published FROM exams WHERE unit_id=?"
+    cur.execute(sql,(unit_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row: return None
+    keys = ['id','item_id','title','instructions','duration_minutes','total_marks','is_published']
+    return dict(zip(keys,row))
+
+def get_exam_questions(exam_id:int):
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+    sql = "SELECT id,qtype,question,options_json,correct_answer,marks,position FROM exam_questions WHERE exam_id=%s ORDER BY position,id" if pg else \
+          "SELECT id,qtype,question,options_json,correct_answer,marks,position FROM exam_questions WHERE exam_id=? ORDER BY position,id"
+    cur.execute(sql,(exam_id,))
+    rows = cur.fetchall(); conn.close()
+    out=[]
+    for r in rows:
+        d={'id':r[0],'qtype':r[1],'question':r[2],'options': json.loads(r[3]) if r[3] else None,
+           'correct': r[4], 'marks': r[5], 'position': r[6]}
+        out.append(d)
+    return out
+
+def save_exam_attempt_and_score(exam_id:int, student_id:int, answers:dict):
+    """Auto-grade MCQ/TF, leave text ungraded (0 marks). Returns (raw_score,total_marks)."""
+    qs = get_exam_questions(exam_id)
+    total = sum(int(q.get('marks',1)) for q in qs)
+    score = 0
+    for q in qs:
+        if q['qtype'] in ('mcq','tf'):
+            if str(answers.get(str(q['id']))) == str(q.get('correct')):
+                score += int(q.get('marks',1))
+        # 'text' -> manual grade later
+
+    conn = get_db(); cur = conn.cursor()
+    pg = bool(os.environ.get('DATABASE_URL'))
+    payload = json.dumps(answers)
+    if pg:
+        # upsert-like: try update, else insert
+        cur.execute("UPDATE exam_attempts SET submitted_at=NOW(), raw_score=%s, total_marks=%s, answers_json=%s, status='submitted' WHERE exam_id=%s AND student_id=%s",
+                    (score,total,payload,exam_id,student_id))
+        if cur.rowcount == 0:
+            cur.execute("INSERT INTO exam_attempts (exam_id, student_id, submitted_at, raw_score, total_marks, answers_json, status) VALUES (%s,%s,NOW(),%s,%s,%s,'submitted')",
+                        (exam_id,student_id,score,total,payload))
+    else:
+        cur.execute("SELECT id FROM exam_attempts WHERE exam_id=? AND student_id=?",(exam_id,student_id))
+        row = cur.fetchone()
+        if row:
+            cur.execute("UPDATE exam_attempts SET submitted_at=CURRENT_TIMESTAMP, raw_score=?, total_marks=?, answers_json=?, status='submitted' WHERE id=?",
+                        (score,total,payload,row[0]))
+        else:
+            cur.execute("INSERT INTO exam_attempts (exam_id, student_id, submitted_at, raw_score, total_marks, answers_json, status) VALUES (?,?,CURRENT_TIMESTAMP,?,?,?,'submitted')",
+                        (exam_id,student_id,score,total,payload))
+    conn.commit(); conn.close()
+    return score, total
 
 
     return []
