@@ -843,6 +843,109 @@ def upload_resource(unit_id):
     
     # ✅ Corrected template name
     return render_template("upload_resource.html", unit=unit)
+# ---------- CURRICULUM JSON APIS (ADD-ONLY) ----------
+
+@app.route('/api/unit/<int:unit_id>/curriculum')
+def api_get_curriculum(unit_id):
+    """Return chapters + items for a unit (JSON)."""
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found'}), 404
+
+    chapters = db.get_unit_chapters(unit_id) or []
+    for ch in chapters:
+        ch['items'] = db.get_chapter_items(ch['id']) or []
+    return jsonify({'ok': True, 'chapters': chapters})
+
+
+@app.route('/api/unit/<int:unit_id>/chapter', methods=['POST'])
+def api_create_chapter(unit_id):
+    """Create a chapter; title optional (auto Chapter N)."""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+
+    # compute next order index and default title
+    chapters = db.get_unit_chapters(unit_id) or []
+    next_idx = (max([c.get('order_index', 0) for c in chapters]) + 1) if chapters else 1
+
+    data = request.form if request.form else request.json or {}
+    title = (data.get('title') or f'Chapter {next_idx}').strip()
+    description = (data.get('description') or '').strip()
+
+    ch_id = db.add_chapter(unit_id=unit_id, title=title, description=description, order_index=next_idx)
+    if not ch_id:
+        return jsonify({'ok': False, 'error': 'Failed to create chapter'}), 400
+
+    return jsonify({'ok': True, 'chapter_id': ch_id})
+
+
+@app.route('/api/unit/<int:unit_id>/item', methods=['POST'])
+def api_create_item(unit_id):
+    """
+    Create lesson/quiz/assignment item under a chapter.
+    Accepts multipart/form-data for optional files.
+    Required: chapter_id, type, title
+    Optional: description, duration, video_url, video_file, instructions, attachment (for quiz/assignment)
+    """
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+
+    # Work with form (supports files) or JSON
+    data = request.form if request.form else request.json or {}
+    chapter_id = int(data.get('chapter_id', 0))
+    item_type = (data.get('type') or '').strip().lower()
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    duration = (data.get('duration') or '').strip()
+    video_url = (data.get('video_url') or '').strip()
+    instructions = (data.get('instructions') or '').strip()
+
+    if not chapter_id or item_type not in ['lesson', 'quiz', 'assignment'] or not title:
+        return jsonify({'ok': False, 'error': 'Missing or invalid fields'}), 400
+
+    # Find next order_index inside this chapter
+    items = db.get_chapter_items(chapter_id) or []
+    next_idx = (max([i.get('order_index', 0) for i in items]) + 1) if items else 1
+
+    # Optional files
+    video_filename = None
+    notes_filename = None
+    attachment_filename = None
+
+    if 'video_file' in request.files and request.files['video_file'].filename:
+        vf = request.files['video_file']
+        video_filename = secure_filename(vf.filename)
+        vf.save(os.path.join(app.config['UPLOAD_FOLDER'], video_filename))
+
+    if 'notes_file' in request.files and request.files['notes_file'].filename:
+        nf = request.files['notes_file']
+        notes_filename = secure_filename(nf.filename)
+        nf.save(os.path.join(app.config['UPLOAD_FOLDER'], notes_filename))
+
+    if 'attachment' in request.files and request.files['attachment'].filename:
+        af = request.files['attachment']
+        attachment_filename = secure_filename(af.filename)
+        af.save(os.path.join(app.config['UPLOAD_FOLDER'], attachment_filename))
+
+    # Persist
+    item_id = db.add_chapter_item(
+        chapter_id=chapter_id,
+        title=title,
+        type=item_type,
+        content=description,             # reuse 'content' column for lesson body/description
+        video_url=video_url,
+        video_file=video_filename,
+        instructions=instructions or (f'Notes: {notes_filename}' if notes_filename else None),
+        duration=duration,
+        order_index=next_idx,
+        attachment_filename=attachment_filename  # your db helper can ignore if not implemented
+    )
+
+    if not item_id:
+        return jsonify({'ok': False, 'error': 'Failed to create item'}), 400
+
+    return jsonify({'ok': True, 'item_id': item_id})
+
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
