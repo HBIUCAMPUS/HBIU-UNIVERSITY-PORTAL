@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-7 mx-auto">
+    <div class="card">
+      <div class="card-header bg-success text-white">
+        <strong>{{ exam.title }} — Result</strong>
+      </div>
+      <div class="card-body">
+        <p><strong>Score:</strong> {{ score }} / {{ total }}</p>
+        <div class="progress mb-3" style="height:10px;">
+          <div class="progress-bar bg-success" style="width: {{ (score/total*100)|round|int if total else 0 }}%;"></div>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('learning_interface', unit_id=unit.id) }}">Back to Course</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
