@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-8 mx-auto">
+    <div class="card">
+      <div class="card-header bg-warning">
+        <strong>{{ exam.title }}</strong>
+      </div>
+      <div class="card-body">
+        <p>{{ exam.instructions }}</p>
+        <ul class="list-unstyled">
+          <li><i class="fas fa-clock me-1"></i> Duration: {{ exam.duration_minutes }} minutes</li>
+          <li><i class="fas fa-star me-1"></i> Total Marks: {{ exam.total_marks }}</li>
+        </ul>
+        {% if not unlocked %}
+          <div class="alert alert-info">
+            Complete all lessons, quizzes, and assignments to unlock the Final Exam.
+          </div>
+        {% else %}
+          <a class="btn btn-danger" href="{{ url_for('exam_start', unit_id=unit.id) }}">Start Exam</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
