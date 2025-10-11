@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+  <div class="col-lg-9 mx-auto">
+    <div class="card">
+      <div class="card-header bg-danger text-white d-flex justify-content-between">
+        <strong>{{ exam.title }}</strong>
+        <span><i class="fas fa-clock me-1"></i>{{ exam.duration_minutes }} mins</span>
+      </div>
+      <form method="POST" action="{{ url_for('exam_submit', unit_id=unit.id) }}">
+        <div class="card-body">
+          {% for q in questions %}
+          <div class="mb-4">
+            <h6>Q{{ loop.index }}. {{ q.question }} <small class="text-muted">({{ q.marks }} mark{{  '' if q.marks==1 else 's'}})</small></h6>
+
+            {% if q.qtype == 'mcq' %}
+              {% for opt in q.options %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="q_{{ q.id }}" id="q{{ q.id }}_{{ loop.index }}" value="{{ opt }}">
+                <label class="form-check-label" for="q{{ q.id }}_{{ loop.index }}">{{ opt }}</label>
+              </div>
+              {% endfor %}
+
+            {% elif q.qtype == 'tf' %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="q_{{ q.id }}" id="q{{ q.id }}_t" value="true">
+                <label class="form-check-label" for="q{{ q.id }}_t">True</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="q_{{ q.id }}" id="q{{ q.id }}_f" value="false">
+                <label class="form-check-label" for="q{{ q.id }}_f">False</label>
+              </div>
+
+            {% else %}
+              <textarea class="form-control" name="q_{{ q.id }}" rows="4" placeholder="Type your answer..."></textarea>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+          <a class="btn btn-outline-secondary" href="{{ url_for('learning_interface', unit_id=unit.id) }}">Cancel</a>
+          <button class="btn btn-success">Submit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
