@@ -3,117 +3,266 @@
 <div class="row">
   <div class="col-md-12">
     <h4 class="mb-4">Curriculum</h4>
-    
+
     <!-- Course Title Section -->
     <div class="card mb-4">
       <div class="card-body">
-        <h5 class="card-title" id="courseTitle">{{ course_title|default(unit.title if unit else "COURSE TITLE") }}</h5>
-        <p class="card-text" id="courseDescription">{{ course_description|default("Course description will appear here") }}</p>
+        <h5 class="card-title text-uppercase mb-1">{{ unit.title if unit else "COURSE TITLE" }}</h5>
+        <p class="card-text text-muted mb-0">{{ unit.description or "Course description will appear here" }}</p>
       </div>
     </div>
 
-    <!-- Curriculum Items -->
-    <div class="curriculum-section mb-4">
-
-      <!-- Lesson -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1">+ Lesson</h6>
-              <small class="text-muted">Add learning materials and content</small>
-            </div>
-            <a href="{{ url_for('add_lesson', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm">
-              Add
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Quiz -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1">+ Quiz</h6>
-              <small class="text-muted">Create assessment questions</small>
-            </div>
-            <a href="{{ url_for('add_quiz', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm">
-              Add
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Assignment -->
-      <div class="card mb-3">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <h6 class="mb-1">+ Assignment</h6>
-              <small class="text-muted">Create tasks for students</small>
-            </div>
-            <a href="{{ url_for('add_assignment', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm">
-              Add
-            </a>
-          </div>
-        </div>
-      </div>
+    <!-- Curriculum Items (rendered from API) -->
+    <div id="curriculumList" class="mb-4">
+      <!-- Filled by JS -->
     </div>
 
     <!-- Add Chapter Button -->
     <div class="text-center mt-4">
-      <button class="btn btn-royal-blue">
+      <button id="btnAddChapter" class="btn btn-royal-blue">
         + Add Chapter
       </button>
     </div>
   </div>
 </div>
 
+<!-- Lesson Modal -->
+<div class="modal fade" id="lessonModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <form class="modal-content" id="lessonForm" enctype="multipart/form-data">
+      <div class="modal-header"><h5 class="modal-title">Add Lesson</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" name="chapter_id" id="lesson_chapter_id">
+        <div class="mb-3">
+          <label class="form-label">Title</label>
+          <input name="title" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description / Notes</label>
+          <textarea name="description" class="form-control" rows="4"></textarea>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">YouTube URL (optional)</label>
+            <input name="video_url" class="form-control" placeholder="https://youtube.com/...">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Upload Video (optional)</label>
+            <input type="file" name="video_file" class="form-control" accept="video/*">
+          </div>
+        </div>
+        <div class="mt-3">
+          <label class="form-label">Upload Lesson Notes (PDF/Doc, optional)</label>
+          <input type="file" name="notes_file" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx">
+        </div>
+        <div class="mt-3">
+          <label class="form-label">Estimated Duration (e.g., 15m)</label>
+          <input name="duration" class="form-control" placeholder="15m">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save Lesson</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Quiz Modal -->
+<div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="quizForm" enctype="multipart/form-data">
+      <div class="modal-header"><h5 class="modal-title">Add Quiz</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" name="chapter_id" id="quiz_chapter_id">
+        <div class="mb-3"><label class="form-label">Title</label>
+          <input name="title" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3"></textarea></div>
+        <div class="mb-3"><label class="form-label">Duration (e.g., 10m)</label>
+          <input name="duration" class="form-control"></div>
+        <div class="mb-3"><label class="form-label">Upload Quiz File (optional)</label>
+          <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save Quiz</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Assignment Modal -->
+<div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form class="modal-content" id="assignmentForm" enctype="multipart/form-data">
+      <div class="modal-header"><h5 class="modal-title">Add Assignment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <input type="hidden" name="chapter_id" id="assignment_chapter_id">
+        <div class="mb-3"><label class="form-label">Title</label>
+          <input name="title" class="form-control" required></div>
+        <div class="mb-3"><label class="form-label">Instructions</label>
+          <textarea name="instructions" class="form-control" rows="4"></textarea></div>
+        <div class="mb-3"><label class="form-label">Due/Duration (optional)</label>
+          <input name="duration" class="form-control" placeholder="e.g., Due week 3"></div>
+        <div class="mb-3"><label class="form-label">Upload Attachment (optional)</label>
+          <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx,.zip">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
+        <button class="btn btn-primary" type="submit">Save Assignment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <style>
-.curriculum-section .card {
-  border-left: 4px solid #4e73df;
-  transition: all 0.3s ease;
-}
-
-.curriculum-section .card:hover {
-  transform: translateX(5px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.card-title {
-  color: #2c3e50;
-  font-weight: 600;
-  font-size: 1.5rem;
-  text-transform: uppercase;
-}
-
-.card-text {
-  color: #7f8c8d;
-  font-size: 0.9rem;
-}
-
-.btn-royal-blue {
-  background-color: #4e73df;
-  border-color: #4e73df;
-  color: white;
-  padding: 10px 30px;
-  font-weight: 600;
-}
-
-.btn-royal-blue:hover {
-  background-color: #2e59d9;
-  border-color: #2e59d9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-}
+.curriculum-section .card { border-left: 4px solid #4e73df; transition: all .3s }
+.curriculum-section .card:hover { transform: translateX(5px); box-shadow: 0 4px 8px rgba(0,0,0,.1) }
+.card-title { color:#2c3e50; font-weight:600; font-size:1.5rem }
+.card-text { color:#7f8c8d; font-size:.9rem }
+.btn-royal-blue{background:#4e73df;border-color:#4e73df;color:#fff;padding:10px 30px;font-weight:600}
+.btn-royal-blue:hover{background:#2e59d9;border-color:#2e59d9;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,.2)}
+.chapter-card{border-left:4px solid #4e73df}
+.chapter-header{display:flex;justify-content:space-between;align-items:center}
+.item-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .25rem;border-radius:6px}
+.item-row:hover{background:#f8f9fa}
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Example dynamic titles (you can remove or customize this)
-  const courseTitle = document.getElementById('courseTitle');
-  const courseDescription = document.getElementById('courseDescription');
+document.addEventListener('DOMContentLoaded', () => {
+  const unitId = {{ unit.id if unit else 0 }};
+  const curriculumEl = document.getElementById('curriculumList');
+
+  const lessonModal = new bootstrap.Modal(document.getElementById('lessonModal'));
+  const quizModal = new bootstrap.Modal(document.getElementById('quizModal'));
+  const assignmentModal = new bootstrap.Modal(document.getElementById('assignmentModal'));
+
+  // Render
+  async function loadCurriculum() {
+    const res = await fetch(`{{ url_for('api_get_curriculum', unit_id=0) }}`.replace('0', unitId));
+    const json = await res.json();
+    if (!json.ok) return;
+    const chapters = json.chapters || [];
+
+    curriculumEl.innerHTML = '';
+    chapters.forEach(ch => {
+      const card = document.createElement('div');
+      card.className = 'card chapter-card mb-3';
+      card.innerHTML = `
+        <div class="card-body">
+          <div class="chapter-header">
+            <div>
+              <h6 class="mb-1">+ ${escapeHtml(ch.title)}</h6>
+              <small class="text-muted">${escapeHtml(ch.description || '')}</small>
+            </div>
+            <div class="btn-group">
+              <button class="btn btn-outline-primary btn-sm add-lesson" data-ch="${ch.id}">Add Lesson</button>
+              <button class="btn btn-outline-primary btn-sm add-quiz" data-ch="${ch.id}">Add Quiz</button>
+              <button class="btn btn-outline-primary btn-sm add-assignment" data-ch="${ch.id}">Add Assignment</button>
+            </div>
+          </div>
+          <div class="mt-3">
+            ${(ch.items || []).map(it => `
+              <div class="item-row">
+                <div>
+                  <strong class="text-capitalize">${it.type}</strong> • ${escapeHtml(it.title)}
+                </div>
+                ${it.duration ? `<small class="text-muted">${escapeHtml(it.duration)}</small>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      curriculumEl.appendChild(card);
+    });
+
+    // hook buttons
+    curriculumEl.querySelectorAll('.add-lesson').forEach(b => b.addEventListener('click', () => {
+      document.getElementById('lesson_chapter_id').value = b.dataset.ch;
+      document.getElementById('lessonForm').reset();
+      lessonModal.show();
+    }));
+    curriculumEl.querySelectorAll('.add-quiz').forEach(b => b.addEventListener('click', () => {
+      document.getElementById('quiz_chapter_id').value = b.dataset.ch;
+      document.getElementById('quizForm').reset();
+      quizModal.show();
+    }));
+    curriculumEl.querySelectorAll('.add-assignment').forEach(b => b.addEventListener('click', () => {
+      document.getElementById('assignment_chapter_id').value = b.dataset.ch;
+      document.getElementById('assignmentForm').reset();
+      assignmentModal.show();
+    }));
+  }
+
+  // Add chapter
+  document.getElementById('btnAddChapter').addEventListener('click', async () => {
+    // quick prompt for name; default handled server-side
+    const title = prompt('Enter chapter title (leave blank for automatic):', '');
+    const form = new FormData();
+    if (title) form.append('title', title);
+    const res = await fetch(`{{ url_for('api_create_chapter', unit_id=0) }}`.replace('0', unitId), {
+      method: 'POST',
+      body: form
+    });
+    const json = await res.json();
+    if (json.ok) {
+      await loadCurriculum();
+    } else {
+      alert(json.error || 'Failed to add chapter');
+    }
+  });
+
+  // Submit lesson
+  document.getElementById('lessonForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    fd.append('type', 'lesson');
+    const res = await fetch(`{{ url_for('api_create_item', unit_id=0) }}`.replace('0', unitId), { method:'POST', body: fd });
+    const json = await res.json();
+    if (json.ok) {
+      lessonModal.hide();
+      await loadCurriculum();
+    } else alert(json.error || 'Failed to save lesson');
+  });
+
+  // Submit quiz
+  document.getElementById('quizForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    fd.append('type', 'quiz');
+    const res = await fetch(`{{ url_for('api_create_item', unit_id=0) }}`.replace('0', unitId), { method:'POST', body: fd });
+    const json = await res.json();
+    if (json.ok) {
+      quizModal.hide();
+      await loadCurriculum();
+    } else alert(json.error || 'Failed to save quiz');
+  });
+
+  // Submit assignment
+  document.getElementById('assignmentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    fd.append('type', 'assignment');
+    const res = await fetch(`{{ url_for('api_create_item', unit_id=0) }}`.replace('0', unitId), { method:'POST', body: fd });
+    const json = await res.json();
+    if (json.ok) {
+      assignmentModal.hide();
+      await loadCurriculum();
+    } else alert(json.error || 'Failed to save assignment');
+  });
+
+  function escapeHtml(s) {
+    return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  // initial
+  loadCurriculum();
 });
 </script>
 {% endblock %}
