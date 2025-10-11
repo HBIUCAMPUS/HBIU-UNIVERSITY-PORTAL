@@ -45,12 +45,13 @@ def get_db():
         return conn
 
 def create_learning_tables():
-    """Create tables for the learning interface - NEW FUNCTION"""
+    """Create/upgrade tables for the learning interface (chapters, items, progress, exams)."""
     conn = get_db()
     cursor = conn.cursor()
-    
+
     try:
-        # Chapters table
+        # ---- Core learning tables ----
+        # Chapters
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS chapters (
                 id SERIAL PRIMARY KEY,
@@ -62,26 +63,26 @@ def create_learning_tables():
                 FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
             )
         """)
-        
-        # Chapter items table (lessons, quizzes, assignments)
+
+        # Chapter items (lesson, quiz, assignment, exam-placeholder)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS chapter_items (
                 id SERIAL PRIMARY KEY,
                 chapter_id INTEGER NOT NULL,
                 title VARCHAR(255) NOT NULL,
-                type VARCHAR(50) NOT NULL, -- 'lesson', 'quiz', 'assignment'
-                content TEXT,
+                type VARCHAR(50) NOT NULL,        -- 'lesson', 'quiz', 'assignment', 'exam'
+                content TEXT,                     -- generic rich text / HTML
                 video_url TEXT,
                 video_file VARCHAR(255),
-                instructions TEXT,
-                duration VARCHAR(50),
+                instructions TEXT,                -- for assignments/quizzes
+                duration VARCHAR(50),             -- e.g. '15 min'
                 order_index INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (chapter_id) REFERENCES chapters(id) ON DELETE CASCADE
             )
         """)
-        
-        # Student progress tracking
+
+        # Student progress
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS student_progress (
                 id SERIAL PRIMARY KEY,
@@ -96,12 +97,104 @@ def create_learning_tables():
                 UNIQUE(student_id, unit_id, item_id)
             )
         """)
-        
+
+        # Add helpful indexes (safe to run multiple times in PG/SQLite)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_chapters_unit ON chapters(unit_id, order_index)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_items_chapter ON chapter_items(chapter_id, order_index)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_progress_student_unit ON student_progress(student_id, unit_id)")
+
+        # ---- Non-breaking upgrades to chapter_items (file columns) ----
+        # SQLite doesn't support IF NOT EXISTS on ADD COLUMN; swallow duplicate-column errors.
+        for ddl in [
+            "ALTER TABLE chapter_items ADD COLUMN notes_file VARCHAR(255)",        # lesson notes upload
+            "ALTER TABLE chapter_items ADD COLUMN quiz_file VARCHAR(255)",         # optional quiz file upload
+            "ALTER TABLE chapter_items ADD COLUMN assignment_file VARCHAR(255)"    # assignment brief upload
+        ]:
+            try:
+                cursor.execute(ddl)
+            except Exception:
+                pass  # column already exists -> ignore
+
+        # ---- Exam tables ----
+        # An exam belongs to a unit (not to a chapter), but you can still put an 'exam' item
+        # into the last chapter to show it in the sidebar.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exams (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                duration_minutes INTEGER DEFAULT 60,
+                total_marks INTEGER DEFAULT 100,
+                pass_marks INTEGER DEFAULT 0,
+                unlock_after_count INTEGER DEFAULT 10,  -- number of non-exam items to complete before unlocked
+                is_published BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exam_questions (
+                id SERIAL PRIMARY KEY,
+                exam_id INTEGER NOT NULL,
+                question_text TEXT NOT NULL,
+                type VARCHAR(20) DEFAULT 'mcq',      -- 'mcq' | 'short'
+                points INTEGER DEFAULT 1,
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exam_options (
+                id SERIAL PRIMARY KEY,
+                question_id INTEGER NOT NULL,
+                option_text TEXT NOT NULL,
+                is_correct BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (question_id) REFERENCES exam_questions(id) ON DELETE CASCADE
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exam_attempts (
+                id SERIAL PRIMARY KEY,
+                exam_id INTEGER NOT NULL,
+                student_id INTEGER NOT NULL,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                submitted_at TIMESTAMP,
+                score INTEGER DEFAULT 0,
+                status VARCHAR(20) DEFAULT 'in_progress',  -- 'in_progress' | 'submitted' | 'graded'
+                FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+            )
+        """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS exam_answers (
+                id SERIAL PRIMARY KEY,
+                attempt_id INTEGER NOT NULL,
+                question_id INTEGER NOT NULL,
+                selected_option_id INTEGER,  -- for MCQ
+                answer_text TEXT,            -- for short answers
+                is_correct BOOLEAN,          -- nullable until graded
+                FOREIGN KEY (attempt_id) REFERENCES exam_attempts(id) ON DELETE CASCADE,
+                FOREIGN KEY (question_id) REFERENCES exam_questions(id) ON DELETE CASCADE,
+                FOREIGN KEY (selected_option_id) REFERENCES exam_options(id) ON DELETE SET NULL
+            )
+        """)
+
+        # Exam indexes
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_exam_unit ON exams(unit_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_q_exam ON exam_questions(exam_id, order_index)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_attempt_exam_student ON exam_attempts(exam_id, student_id)")
+
         conn.commit()
-        print("✅ Learning tables created successfully")
-        
+        print("✅ Learning & exam tables created/updated successfully")
+
     except Exception as e:
-        print(f"❌ Error creating learning tables: {e}")
+        print(f"❌ Error creating/upgrading learning tables: {e}")
         conn.rollback()
     finally:
         conn.close()
