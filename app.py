@@ -812,6 +812,120 @@ def student_results():
 @app.route("/test")
 def test():
     return "✅ Flask is working and connected to database!"
+# ==================== NEW: LESSON, QUIZ, ASSIGNMENT ROUTES ====================
+
+@app.route('/unit/<int:unit_id>/add-lesson', methods=['GET', 'POST'])
+def add_lesson(unit_id):
+    """Add a new lesson to a unit"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please log in as a lecturer or admin to continue', 'danger')
+        return redirect(url_for('login'))
+
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        video_file = request.files.get('video_file')
+        notes_file = request.files.get('notes_file')
+
+        video_filename = None
+        notes_filename = None
+
+        # Handle file uploads
+        if video_file and video_file.filename:
+            video_filename = secure_filename(video_file.filename)
+            video_file.save(os.path.join(app.config['UPLOAD_FOLDER'], video_filename))
+
+        if notes_file and notes_file.filename:
+            notes_filename = secure_filename(notes_file.filename)
+            notes_file.save(os.path.join(app.config['UPLOAD_FOLDER'], notes_filename))
+
+        # Save to database (you can customize the method name as per your DB)
+        try:
+            db.add_lesson(unit_id, title, content, video_filename, notes_filename, session.get('user_id'))
+            flash('Lesson added successfully!', 'success')
+        except Exception as e:
+            print(f"Error adding lesson: {e}")
+            flash('Error adding lesson', 'danger')
+
+        return redirect(url_for('unit_detail', unit_id=unit_id))
+
+    return render_template('add_lesson.html', unit=unit)
+
+
+@app.route('/unit/<int:unit_id>/add-quiz', methods=['GET', 'POST'])
+def add_quiz(unit_id):
+    """Add a new quiz to a unit"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please log in as a lecturer or admin to continue', 'danger')
+        return redirect(url_for('login'))
+
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        description = request.form.get('description')
+        duration = request.form.get('duration')  # in minutes
+        quiz_file = request.files.get('quiz_file')
+
+        quiz_filename = None
+        if quiz_file and quiz_file.filename:
+            quiz_filename = secure_filename(quiz_file.filename)
+            quiz_file.save(os.path.join(app.config['UPLOAD_FOLDER'], quiz_filename))
+
+        try:
+            db.add_quiz(unit_id, title, description, duration, quiz_filename, session.get('user_id'))
+            flash('Quiz added successfully!', 'success')
+        except Exception as e:
+            print(f"Error adding quiz: {e}")
+            flash('Error adding quiz', 'danger')
+
+        return redirect(url_for('unit_detail', unit_id=unit_id))
+
+    return render_template('add_quiz.html', unit=unit)
+
+
+@app.route('/unit/<int:unit_id>/add-assignment', methods=['GET', 'POST'])
+def add_assignment(unit_id):
+    """Add a new assignment to a unit"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please log in as a lecturer or admin to continue', 'danger')
+        return redirect(url_for('login'))
+
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('home'))
+
+    if request.method == 'POST':
+        title = request.form.get('title')
+        instructions = request.form.get('instructions')
+        due_date = request.form.get('due_date')
+        assignment_file = request.files.get('assignment_file')
+
+        assignment_filename = None
+        if assignment_file and assignment_file.filename:
+            assignment_filename = secure_filename(assignment_file.filename)
+            assignment_file.save(os.path.join(app.config['UPLOAD_FOLDER'], assignment_filename))
+
+        try:
+            db.add_assignment(unit_id, title, instructions, due_date, assignment_filename, session.get('user_id'))
+            flash('Assignment added successfully!', 'success')
+        except Exception as e:
+            print(f"Error adding assignment: {e}")
+            flash('Error adding assignment', 'danger')
+
+        return redirect(url_for('unit_detail', unit_id=unit_id))
+
+    return render_template('add_assignment.html', unit=unit)
+
 
 # ==================== UPDATE PROFILE ROUTE ====================
 
