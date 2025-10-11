@@ -703,29 +703,71 @@ def unit_detail(unit_id):
 
 @app.route('/unit/<int:unit_id>/learn')
 def learning_interface(unit_id):
-    # Get unit data
+    # Unit
     unit = db.get_unit_by_id(unit_id)
     if not unit:
         flash('Unit not found', 'danger')
         return redirect(url_for('home'))
-    
-    # Get chapters and their items (lessons, quizzes, assignments)
-    # Using your existing database functions instead of direct SQL
-    chapters = db.get_unit_chapters(unit_id)
-    
-    # Get chapter items for each chapter
-    for chapter in chapters:
-        chapter['items'] = db.get_chapter_items(chapter['id'])
-    
-    # Get student progress (if implemented)
-    progress_data = {}
-    if 'user_id' in session and session['user_type'] == 'student':
-        progress_data = db.get_student_progress(session['user_id'], unit_id)
-    
-    return render_template('learning_interface.html', 
-                         unit=unit, 
-                         chapters=chapters, 
-                         progress_data=progress_data)
+
+    # Chapters (sorted if order_index exists)
+    chapters = db.get_unit_chapters(unit_id) or []
+    chapters.sort(key=lambda c: c.get('order_index', 0))
+
+    # Progress (students only)
+    is_student = ('user_id' in session and session.get('user_type') == 'student')
+    progress_data = db.get_student_progress(session['user_id'], unit_id) if is_student else {}
+    progress_data = progress_data or {}
+
+    total_items = 0
+    completed_items = 0
+    has_exam_item = False
+
+    # Attach items and compute progress (non-exam only)
+    for ch in chapters:
+        items = db.get_chapter_items(ch['id']) or []
+        items.sort(key=lambda i: i.get('order_index', 0))
+
+        for it in items:
+            it['completed'] = bool(progress_data.get(it['id'], False))
+            if it.get('type') == 'exam':
+                has_exam_item = True
+            else:
+                total_items += 1
+                if it['completed']:
+                    completed_items += 1
+
+        ch['items'] = items
+
+    # If you don't persist an exam item, synthesize one
+    if not has_exam_item:
+        chapters.append({
+            'id': -99999,
+            'title': 'Final Examination',
+            'items': [{
+                'id': -100000,
+                'chapter_id': -99999,
+                'type': 'exam',
+                'title': 'Final Exam',
+                'completed': bool(progress_data.get(-100000, False))
+            }]
+        })
+
+    progress_percentage = int((completed_items / total_items) * 100) if total_items else 0
+
+    # Only students can unlock the exam by progress
+    exam_unlocked = (is_student and progress_percentage == 100)
+
+    return render_template(
+        'learning_interface.html',
+        unit=unit,
+        chapters=chapters,
+        progress_data=progress_data,
+        total_items=total_items,
+        completed_items=completed_items,
+        progress_percentage=progress_percentage,
+        exam_unlocked=exam_unlocked
+    )
+
 
 @app.route('/update_progress', methods=['POST'])
 def update_progress():
