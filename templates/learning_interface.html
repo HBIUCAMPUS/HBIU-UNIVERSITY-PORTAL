@@ -20,7 +20,7 @@
             </div>
 
             <div class="chapter-content mt-2 ms-3 d-none">
-              {% for item in chapter.items %}
+              {% for item in chapter['items'] %}
               {% set is_exam = (item.type == 'exam') %}
               <div
                 class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %}"
