@@ -1,0 +1,196 @@
+{# templates/add_quiz.html #}
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+          <li class="breadcrumb-item"><a href="#">Course Builder</a></li>
+          <li class="breadcrumb-item"><a href="#">Curriculum</a></li>
+          <li class="breadcrumb-item active" aria-current="page">Quiz</li>
+        </ol>
+      </nav>
+      <h5 class="mb-0">Quiz <small class="text-muted">Topic: {{ chapter.title if chapter else '—' }}</small></h5>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary" type="button" onclick="history.back()">Cancel</button>
+      <button class="btn btn-primary" form="quizForm" type="submit">Save</button>
+    </div>
+  </div>
+
+  <form id="quizForm"
+        method="POST"
+        action="{{ form_action or url_for('add_quiz', chapter_id=chapter.id) if chapter else (form_action or '#') }}"
+        enctype="multipart/form-data"
+        class="row g-3">
+
+    <!-- Left: Quiz meta & builder -->
+    <div class="col-12 col-lg-8">
+      <div class="card mb-3">
+        <div class="card-body">
+          <!-- Title -->
+          <div class="mb-3">
+            <label class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="title" placeholder="Enter quiz title"
+                   value="{{ item.title if item else '' }}" required>
+          </div>
+
+          <!-- Instructions -->
+          <div class="mb-2 d-flex justify-content-between align-items-center">
+            <label class="form-label mb-0">Instructions</label>
+            <span class="text-muted small">Shown to students before starting</span>
+          </div>
+          <textarea class="form-control" name="instructions" rows="6"
+            placeholder="Explain rules, materials allowed, etc.">{{ item.instructions if item else '' }}</textarea>
+
+          <!-- Optional simple question builder (stored as JSON in hidden field) -->
+          <hr>
+          <div class="d-flex align-items-center justify-content-between">
+            <h6 class="mb-0">Questions (optional)</h6>
+            <button class="btn btn-sm btn-outline-primary" type="button" onclick="addQ()">+ Add Question</button>
+          </div>
+          <div id="qList" class="mt-2"></div>
+          <input type="hidden" name="content" id="qPayload"> {# stores JSON of questions #}
+          <div class="form-text mt-1">
+            If you prefer, skip the builder and upload a quiz file on the right.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Settings & Upload -->
+    <div class="col-12 col-lg-4">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Quiz Settings</h6>
+
+          <label class="form-label">Time Limit</label>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <input type="number" min="0" class="form-control" name="duration_minutes"
+                     placeholder="0" value="{{ item.duration_minutes if item else '' }}">
+              <div class="form-text text-center">minutes</div>
+            </div>
+            <div class="col-6">
+              <input type="number" min="0" class="form-control" name="max_attempts" placeholder="1">
+              <div class="form-text text-center">max attempts</div>
+            </div>
+          </div>
+
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="shuffle" id="shuffle">
+            <label class="form-check-label" for="shuffle">Shuffle questions</label>
+          </div>
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="show_answers" id="show_answers">
+            <label class="form-check-label" for="show_answers">Show correct answers after submit</label>
+          </div>
+
+          <hr>
+          <h6 class="card-title mb-2">Upload Quiz File</h6>
+          <input class="form-control" type="file" name="quiz_file" accept=".pdf,.doc,.docx,.csv,.xlsx,.zip">
+          <div class="form-text">Optional. Upload a prepared quiz file or bank.</div>
+        </div>
+      </div>
+
+      <!-- Preview toggle -->
+      <div class="card">
+        <div class="card-body d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="card-title mb-1">Quiz Preview</h6>
+            <small class="text-muted">Allow preview before enrollment</small>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" role="switch" name="is_preview"
+                   {% if item and item.is_preview %}checked{% endif %}>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden metadata -->
+    <input type="hidden" name="chapter_id" value="{{ chapter.id if chapter else (chapter_id or '') }}">
+    <input type="hidden" name="type" value="quiz">
+    <input type="hidden" name="order_index" value="{{ item.order_index if item else (order_index or 0) }}">
+  </form>
+</div>
+
+<style>.card-title{font-weight:600} #qList .card{border-left:4px solid #4e73df}</style>
+
+<script>
+const qList = document.getElementById('qList');
+const qPayload = document.getElementById('qPayload');
+let qCounter = 0;
+
+function addQ() {
+  qCounter++;
+  const id = `q${qCounter}`;
+  const card = document.createElement('div');
+  card.className = 'card mb-2';
+  card.innerHTML = `
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <strong>Question ${qCounter}</strong>
+        <button class="btn btn-sm btn-outline-danger" type="button" onclick="this.closest('.card').remove(); syncJSON()">Remove</button>
+      </div>
+      <input class="form-control mb-2" name="${id}_text" placeholder="Question text">
+      <div class="row g-2 mb-2">
+        <div class="col-9"><input class="form-control" name="${id}_opt1" placeholder="Option A"></div>
+        <div class="col-3">
+          <select class="form-select" name="${id}_ans1">
+            <option value="false" selected>Wrong</option>
+            <option value="true">Correct</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-9"><input class="form-control" name="${id}_opt2" placeholder="Option B"></div>
+        <div class="col-3">
+          <select class="form-select" name="${id}_ans2">
+            <option value="false" selected>Wrong</option>
+            <option value="true">Correct</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-2 mb-2">
+        <div class="col-9"><input class="form-control" name="${id}_opt3" placeholder="Option C"></div>
+        <div class="col-3">
+          <select class="form-select" name="${id}_ans3">
+            <option value="false" selected>Wrong</option>
+            <option value="true">Correct</option>
+          </select>
+        </div>
+      </div>
+      <div class="row g-2">
+        <div class="col-9"><input class="form-control" name="${id}_opt4" placeholder="Option D"></div>
+        <div class="col-3">
+          <select class="form-select" name="${id}_ans4">
+            <option value="false" selected>Wrong</option>
+            <option value="true">Correct</option>
+          </select>
+        </div>
+      </div>
+    </div>`;
+  qList.appendChild(card);
+  Array.from(card.querySelectorAll('input,select')).forEach(el => el.addEventListener('input', syncJSON));
+  syncJSON();
+}
+
+function syncJSON() {
+  const data = [];
+  qList.querySelectorAll('.card').forEach((c, idx) => {
+    const q = {};
+    q.text = c.querySelector(`[name^="q"][name$="_text"]`)?.value || '';
+    q.options = [];
+    for (let i=1;i<=4;i++){
+      const opt = c.querySelector(`[name^="q"][name$="_opt${i}"]`)?.value || '';
+      const ans = c.querySelector(`[name^="q"][name$="_ans${i}"]`)?.value === 'true';
+      q.options.push({ text: opt, correct: ans });
+    }
+    data.push(q);
+  });
+  qPayload.value = JSON.stringify(data);
+}
+</script>
+{% endblock %}
