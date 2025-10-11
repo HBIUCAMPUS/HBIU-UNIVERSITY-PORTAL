@@ -774,17 +774,22 @@ def unit_results(unit_id):
 
 @app.route("/lecturer/unit/<int:unit_id>/upload", methods=['GET', 'POST'])
 def upload_resource(unit_id):
-    if 'user_id' not in session or session['user_type'] != 'lecturer':
-        flash('Please login as lecturer', 'warning')
+    """Allow lecturer or admin to upload course resources."""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please login as lecturer or admin to continue', 'warning')
         return redirect(url_for('login'))
     
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('lecturer_dashboard'))
+    
     if request.method == 'POST':
-        title = request.form['title']
-        file = request.files['file']
+        title = request.form.get('title')
+        file = request.files.get('file')
         
         if file and file.filename:
             filename = secure_filename(file.filename)
-            # Use Render's persistent disk storage
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             
@@ -794,7 +799,8 @@ def upload_resource(unit_id):
             else:
                 flash('Error uploading resource', 'danger')
     
-    return render_template("upload_resource.html")
+    # ✅ Corrected template name
+    return render_template("upload_resource.html", unit=unit)
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
