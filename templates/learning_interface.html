@@ -15,15 +15,20 @@
             <div class="d-flex justify-content-between align-items-center">
               <h6 class="mb-0 chapter-title" role="button">
                 <i class="fas fa-folder me-2"></i>{{ chapter.title }}
+                {% if chapter.description %}
+                <small class="text-muted d-block mt-1">{{ chapter.description }}</small>
+                {% endif %}
               </h6>
-              <button class="btn btn-sm btn-link toggle-chapter">Show</button>
+              <button class="btn btn-sm btn-link toggle-chapter">
+                <i class="fas fa-chevron-down"></i>
+              </button>
             </div>
 
-            <div class="chapter-content mt-2 ms-3 d-none">
+            <div class="chapter-content mt-2 ms-3">
               {% for item in chapter['items'] %}
               {% set is_exam = (item.type == 'exam') %}
               <div
-                class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %}"
+                class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
                 data-item-id="{{ item.id }}"
                 data-type="{{ item.type }}"
                 data-locked="{{ (is_exam and not exam_unlocked)|int }}"
@@ -31,20 +36,26 @@
                 <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
                   <input class="form-check-input completion-checkbox" type="checkbox"
                          {% if item.completed %}checked{% endif %}
+                         {% if is_exam and not exam_unlocked %}disabled{% endif %}
                          data-item-id="{{ item.id }}">
                 </div>
 
-                <small class="flex-grow-1 item-open" role="button">
+                <small class="flex-grow-1 item-open" role="button" style="cursor: pointer;">
                   {% if is_exam %}
-                    <i class="fas fa-lock me-1 exam-lock {% if exam_unlocked %}d-none{% endif %}"></i>
-                    <i class="fas fa-star me-1 {% if not exam_unlocked %}d-none{% endif %}"></i>
+                    {% if exam_unlocked %}
+                    <i class="fas fa-star text-warning me-1"></i>
+                    <strong>Final Exam</strong>
+                    {% else %}
+                    <i class="fas fa-lock me-1"></i>
+                    <span class="text-muted">Final Exam (Complete {{ 10 - completed_chapters }} more chapters)</span>
+                    {% endif %}
                   {% else %}
-                    <i class="fas {% if item.type == 'quiz' %}fa-question-circle{% elif item.type == 'assignment' %}fa-tasks{% else %}fa-play-circle{% endif %} me-1"></i>
+                    <i class="fas {% if item.type == 'quiz' %}fa-question-circle text-info{% elif item.type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
+                    {{ item.title }}
                   {% endif %}
-                  {{ item.title }}
                 </small>
 
-                {% if item.duration %}
+                {% if item.duration and not is_exam %}
                 <small class="text-muted ms-2">{{ item.duration }}</small>
                 {% endif %}
               </div>
@@ -65,6 +76,14 @@
         <small class="text-muted">
           Your Progress: {{ completed_items }}/{{ total_items }} ({{ progress_percentage }}%)
         </small>
+        {% if not exam_unlocked and chapters|length >= 10 %}
+        <div class="mt-2">
+          <small class="text-warning">
+            <i class="fas fa-info-circle"></i>
+            Complete all items to unlock final exam
+          </small>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -81,14 +100,14 @@
           </ol>
         </nav>
         <h4 class="card-title">{{ unit.title }}</h4>
-        <p class="text-muted">{{ unit.description }}</p>
+        <p class="text-muted">{{ unit.description or "Course content and materials" }}</p>
       </div>
     </div>
 
     <div class="card">
       <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
-          <h5 class="mb-0" id="contentTitle">Select a lesson to begin</h5>
+          <h5 class="mb-0" id="contentTitle">Welcome to Your Learning Journey</h5>
           <div>
             <button class="btn btn-sm btn-outline-secondary me-2" id="prevBtn" disabled>
               <i class="fas fa-chevron-left me-1"></i>Previous
@@ -101,53 +120,139 @@
       </div>
 
       <div class="card-body">
-        <!-- Lesson -->
-        <div id="videoContent" class="d-none">
-          <div class="ratio ratio-16x9 mb-4">
-            <iframe id="lessonVideo" src="" frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen></iframe>
+        <!-- Lesson Content -->
+        <div id="lessonContent" class="d-none">
+          <div class="row">
+            <div class="col-lg-8">
+              <div id="videoContent" class="mb-4">
+                <div class="ratio ratio-16x9 mb-3">
+                  <iframe id="lessonVideo" src="" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0">Lesson Materials</h6>
+                </div>
+                <div class="card-body">
+                  <div id="lessonMaterials"></div>
+                  {% if session.user_type == 'lecturer' or session.user_type == 'admin' %}
+                  <div class="mt-3">
+                    <a href="{{ url_for('add_lesson_page', unit_id=unit.id) }}" class="btn btn-sm btn-outline-primary w-100" target="_blank">
+                      Edit Lesson
+                    </a>
+                  </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
           </div>
-          <div id="videoDescription"></div>
+          <div id="lessonDescription" class="mt-3"></div>
         </div>
 
-        <!-- Quiz -->
+        <!-- Quiz Content -->
         <div id="quizContent" class="d-none">
-          <div class="alert alert-info mb-3">Quiz content goes here.</div>
-          <div id="quizQuestions"></div>
-          <button class="btn btn-success mt-3" id="submitQuiz">Submit Quiz</button>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <span id="quizInstructions">Complete the quiz to test your understanding.</span>
+          </div>
+          <div id="quizQuestions" class="mb-4"></div>
+          <div class="d-flex justify-content-between align-items-center">
+            <div id="quizProgress" class="text-muted small"></div>
+            <button class="btn btn-success" id="submitQuiz">
+              <i class="fas fa-paper-plane me-1"></i>Submit Quiz
+            </button>
+          </div>
         </div>
 
-        <!-- Assignment -->
+        <!-- Assignment Content -->
         <div id="assignmentContent" class="d-none">
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            Make sure to submit before the due date.
+          </div>
           <h6>Assignment Instructions</h6>
-          <div id="assignmentInstructions" class="mb-3"></div>
-          <label for="assignmentSubmission" class="form-label">Submit Your Work</label>
-          <input type="file" class="form-control" id="assignmentSubmission">
-          <button class="btn btn-success mt-3" id="submitAssignment">Submit Assignment</button>
+          <div id="assignmentInstructions" class="mb-4 p-3 bg-light rounded"></div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="card mb-3">
+                <div class="card-header">
+                  <h6 class="mb-0">Submission</h6>
+                </div>
+                <div class="card-body">
+                  <label for="assignmentSubmission" class="form-label">Upload Your Work</label>
+                  <input type="file" class="form-control mb-2" id="assignmentSubmission" multiple>
+                  <textarea class="form-control mb-2" id="assignmentComments" placeholder="Add any comments (optional)" rows="3"></textarea>
+                  <button class="btn btn-success w-100" id="submitAssignment">
+                    <i class="fas fa-upload me-1"></i>Submit Assignment
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0">Assignment Details</h6>
+                </div>
+                <div class="card-body">
+                  <div id="assignmentDetails"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Exam -->
+        <!-- Exam Content -->
         <div id="examContent" class="d-none">
-          <div class="alert alert-warning mb-3">
-            Final Exam is unlocked. Click “Start Exam” to proceed.
+          <div class="alert alert-warning">
+            <i class="fas fa-star me-2"></i>
+            <strong>Final Examination</strong> - This exam covers all course materials.
           </div>
-          <a class="btn btn-danger" id="startExam" href="{{ url_for('exam_landing', unit_id=unit.id) }}">Start Exam</a>
+          <div class="text-center py-4">
+            <i class="fas fa-graduation-cap fa-4x text-warning mb-3"></i>
+            <h4>Ready for Your Final Exam?</h4>
+            <p class="text-muted mb-4">This exam tests your understanding of all course concepts covered in the chapters.</p>
+            <a class="btn btn-danger btn-lg" id="startExam" href="{{ url_for('exam_landing', unit_id=unit.id) }}">
+              <i class="fas fa-play-circle me-2"></i>Start Exam
+            </a>
+          </div>
         </div>
 
-        <!-- Empty -->
-        <div id="emptyContent" class="text-center py-5">
-          <i class="fas fa-book-open fa-3x text-muted mb-3"></i>
-          <h5 class="text-muted">Welcome to Your Learning Journey</h5>
-          <p class="text-muted">Select a lesson, quiz, or assignment from the sidebar to begin.</p>
+        <!-- Welcome Content -->
+        <div id="welcomeContent" class="text-center py-5">
+          <i class="fas fa-book-open fa-4x text-muted mb-3"></i>
+          <h4 class="text-muted">Welcome to Your Learning Journey</h4>
+          <p class="text-muted mb-4">Select a lesson, quiz, or assignment from the sidebar to begin learning.</p>
+          <div class="row justify-content-center">
+            <div class="col-md-8">
+              <div class="card">
+                <div class="card-body">
+                  <h6>Getting Started</h6>
+                  <ul class="list-unstyled text-start">
+                    <li><i class="fas fa-play-circle text-primary me-2"></i>Start with lessons to learn new concepts</li>
+                    <li><i class="fas fa-question-circle text-info me-2"></i>Take quizzes to test your knowledge</li>
+                    <li><i class="fas fa-tasks text-warning me-2"></i>Complete assignments to apply what you've learned</li>
+                    <li><i class="fas fa-star text-warning me-2"></i>Final exam unlocks after completing all content</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Completion -->
+        <!-- Completion Section -->
         <div class="mt-4 pt-3 border-top d-none" id="completionSection">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="markComplete">
-            <label class="form-check-label" for="markComplete">Mark this item as completed</label>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="markComplete" role="switch">
+            <label class="form-check-label" for="markComplete">
+              <strong>Mark this item as completed</strong>
+            </label>
           </div>
+          <small class="text-muted">Check this when you've finished reviewing this content.</small>
         </div>
       </div>
     </div>
@@ -160,209 +265,494 @@
   data-chapters='{{ chapters|tojson }}'
   data-progress='{{ progress_data|tojson }}'
   data-exam-unlocked='{{ 1 if exam_unlocked else 0 }}'
+  data-completed-chapters='{{ completed_chapters }}'
+  data-total-chapters='{{ chapters|length }}'
   class="d-none"></div>
 
 <style>
-.sticky-top{position:-webkit-sticky;position:sticky;z-index:1020}
-.chapter-item{border-left:3px solid transparent;transition:.3s}
-.chapter-item:hover{border-left-color:#4e73df;background:#f8f9fa}
-.chapter-title{font-weight:600;color:#2c3e50}
-.lesson-item{padding:4px 8px;border-radius:4px;transition:.2s}
-.lesson-item:hover{background:#e9ecef}
-.lesson-item.text-success{background:#d1edff}
-.completion-checkbox:checked{background:#28a745;border-color:#28a745}
-.ratio-16x9{border-radius:8px;overflow:hidden}
-#emptyContent{min-height:280px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.sticky-top {
+  position: -webkit-sticky;
+  position: sticky;
+  z-index: 1020;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.chapter-item {
+  border-left: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+.chapter-item:hover {
+  border-left-color: #4e73df;
+  background: #f8f9fa;
+}
+.chapter-title {
+  font-weight: 600;
+  color: #2c3e50;
+  cursor: pointer;
+}
+.lesson-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+.lesson-item:hover {
+  background: #e9ecef;
+  border-color: #dee2e6;
+}
+.lesson-item.text-success {
+  background: #d1edff;
+  border-color: #b8daff;
+}
+.completion-checkbox:checked {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+.ratio-16x9 {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+#welcomeContent {
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+.quiz-question {
+  border-left: 4px solid #4e73df;
+  padding-left: 1rem;
+  margin-bottom: 1.5rem;
+}
+.assignment-detail {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-  // ----- Data -----
+document.addEventListener('DOMContentLoaded', function() {
+  // ----- Data & State -----
   const dataEl = document.getElementById('courseData');
-  const unitId = Number(dataEl.dataset.unitId);
+  const unitId = parseInt(dataEl.dataset.unitId);
   const chapters = JSON.parse(dataEl.dataset.chapters || '[]');
   const progressMap = JSON.parse(dataEl.dataset.progress || '{}');
   let examUnlocked = dataEl.dataset.examUnlocked === '1';
+  const completedChapters = parseInt(dataEl.dataset.completedChapters || '0');
+  const totalChapters = parseInt(dataEl.dataset.totalChapters || '0');
 
-  // ----- State -----
-  const linear = []; // Flat ordered list of items for prev/next
-  chapters.forEach(ch => (ch.items || []).forEach(it => linear.push({chapterId: ch.id, ...it})));
-  let currentIndex = -1;
-
-  // ----- DOM -----
-  const contentTitle = document.getElementById('contentTitle');
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-
-  // Toggle chapters
-  document.querySelectorAll('.toggle-chapter').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const body = this.closest('.chapter-item').querySelector('.chapter-content');
-      body.classList.toggle('d-none');
-      this.textContent = body.classList.contains('d-none') ? 'Show' : 'Hide';
-    });
-  });
-
-  // Open item
-  document.querySelectorAll('.lesson-item .item-open').forEach(span => {
-    span.addEventListener('click', function() {
-      const row = this.closest('.lesson-item');
-      const locked = row.dataset.locked === '1';
-      const id = Number(row.dataset.itemId);
-      const type = row.dataset.type;
-
-      if (type === 'exam' && (locked || !examUnlocked)) {
-        // still locked -> ignore
-        return;
-      }
-
-      // Find index in linear
-      currentIndex = linear.findIndex(x => x.id === id);
-      if (currentIndex < 0) return;
-
-      loadItem(linear[currentIndex]);
-      updateNav();
-    });
-  });
-
-  // Completion checkboxes (sidebar)
-  document.querySelectorAll('.completion-checkbox').forEach(cb => {
-    cb.addEventListener('change', function() {
-      const id = Number(this.dataset.itemId);
-      const isCompleted = this.checked;
-      postProgress(id, isCompleted, () => {
-        const row = document.querySelector(`.lesson-item[data-item-id="${id}"]`);
-        row.classList.toggle('text-success', isCompleted);
-        progressMap[id] = isCompleted;
-        refreshProgressUI();
-        tryUnlockExam();
+  // Flatten all items for navigation
+  const linear = [];
+  chapters.forEach(chapter => {
+    (chapter.items || []).forEach(item => {
+      linear.push({
+        chapterId: chapter.id,
+        chapterTitle: chapter.title,
+        ...item
       });
     });
   });
 
-  // Header checkbox
+  let currentIndex = -1;
+  let currentItem = null;
+
+  // ----- DOM Elements -----
+  const contentTitle = document.getElementById('contentTitle');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
   const markComplete = document.getElementById('markComplete');
-  markComplete.addEventListener('change', function() {
-    if (currentIndex < 0) return;
-    const item = linear[currentIndex];
-    if (item.type === 'exam') { this.checked = false; return; }
-    const isCompleted = this.checked;
-    postProgress(item.id, isCompleted, () => {
-      const row = document.querySelector(`.lesson-item[data-item-id="${item.id}"]`);
-      row.classList.toggle('text-success', isCompleted);
-      const cb = row.querySelector('.completion-checkbox');
-      if (cb) cb.checked = isCompleted;
-      progressMap[item.id] = isCompleted;
-      refreshProgressUI();
-      tryUnlockExam();
+
+  // ----- Chapter Toggle -----
+  document.querySelectorAll('.toggle-chapter').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const chapterItem = this.closest('.chapter-item');
+      const isExpanded = !chapterItem.classList.contains('collapsed');
+      
+      chapterItem.classList.toggle('collapsed');
+      this.innerHTML = isExpanded ? 
+        '<i class="fas fa-chevron-right"></i>' : 
+        '<i class="fas fa-chevron-down"></i>';
     });
   });
 
-  // Prev/Next
-  prevBtn.addEventListener('click', () => {
+  // ----- Item Click Handler -----
+  document.querySelectorAll('.lesson-item .item-open').forEach(span => {
+    span.addEventListener('click', function() {
+      const itemEl = this.closest('.lesson-item');
+      const itemId = parseInt(itemEl.dataset.itemId);
+      const itemType = itemEl.dataset.type;
+      const isLocked = itemEl.dataset.locked === '1';
+
+      if (itemType === 'exam' && !examUnlocked) {
+        showNotification('Complete all chapters and items to unlock the final exam.', 'warning');
+        return;
+      }
+
+      // Find and load the item
+      currentIndex = linear.findIndex(item => item.id === itemId);
+      if (currentIndex >= 0) {
+        currentItem = linear[currentIndex];
+        loadItem(currentItem);
+        updateNavigation();
+      }
+    });
+  });
+
+  // ----- Progress Tracking -----
+  document.querySelectorAll('.completion-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const itemId = parseInt(this.dataset.itemId);
+      const completed = this.checked;
+      updateProgress(itemId, completed);
+    });
+  });
+
+  markComplete.addEventListener('change', function() {
+    if (currentItem && currentItem.type !== 'exam') {
+      updateProgress(currentItem.id, this.checked);
+    }
+  });
+
+  // ----- Navigation -----
+  prevBtn.addEventListener('click', navigateToPrevious);
+  nextBtn.addEventListener('click', navigateToNext);
+
+  function navigateToPrevious() {
     if (currentIndex > 0) {
       currentIndex--;
-      if (linear[currentIndex].type === 'exam' && !examUnlocked) currentIndex--; // skip locked exam
-      if (currentIndex < 0) { currentIndex = 0; }
-      loadItem(linear[currentIndex]); updateNav();
+      // Skip locked exams
+      while (currentIndex >= 0 && linear[currentIndex].type === 'exam' && !examUnlocked) {
+        currentIndex--;
+      }
+      if (currentIndex < 0) currentIndex = 0;
+      
+      currentItem = linear[currentIndex];
+      loadItem(currentItem);
+      updateNavigation();
     }
-  });
-  nextBtn.addEventListener('click', () => {
-    if (currentIndex < linear.length - 1) {
-      currentIndex++;
-      if (linear[currentIndex].type === 'exam' && !examUnlocked) currentIndex++; // skip locked exam
-      if (currentIndex >= linear.length) { currentIndex = linear.length - 1; return; }
-      loadItem(linear[currentIndex]); updateNav();
-    }
-  });
-
-  function updateNav() {
-    prevBtn.disabled = (currentIndex <= 0);
-    nextBtn.disabled = (currentIndex >= linear.length - 1) ||
-                       (linear[currentIndex + 1]?.type === 'exam' && !examUnlocked && currentIndex + 1 === linear.length - 1);
   }
 
-  // Content loaders
-  function hideAll() {
-    ['videoContent','quizContent','assignmentContent','examContent','emptyContent']
-      .forEach(id => document.getElementById(id).classList.add('d-none'));
+  function navigateToNext() {
+    if (currentIndex < linear.length - 1) {
+      currentIndex++;
+      // Skip locked exams
+      while (currentIndex < linear.length && linear[currentIndex].type === 'exam' && !examUnlocked) {
+        currentIndex++;
+      }
+      if (currentIndex >= linear.length) {
+        currentIndex = linear.length - 1;
+        return;
+      }
+      
+      currentItem = linear[currentIndex];
+      loadItem(currentItem);
+      updateNavigation();
+    }
+  }
+
+  function updateNavigation() {
+    prevBtn.disabled = currentIndex <= 0;
+    
+    const hasNext = currentIndex < linear.length - 1;
+    const nextItem = hasNext ? linear[currentIndex + 1] : null;
+    const nextIsLockedExam = nextItem && nextItem.type === 'exam' && !examUnlocked;
+    
+    nextBtn.disabled = !hasNext || nextIsLockedExam;
+  }
+
+  // ----- Content Loading -----
+  function hideAllContent() {
+    ['welcomeContent', 'lessonContent', 'quizContent', 'assignmentContent', 'examContent'].forEach(id => {
+      document.getElementById(id).classList.add('d-none');
+    });
     document.getElementById('completionSection').classList.add('d-none');
   }
 
   function loadItem(item) {
-    hideAll();
-    contentTitle.textContent = item.title || 'Content';
+    hideAllContent();
+    contentTitle.textContent = item.title;
 
-    if (item.type === 'lesson') {
-      document.getElementById('videoContent').classList.remove('d-none');
-      const frame = document.getElementById('lessonVideo');
-      frame.src = '';
-      let url = item.video_url || '';
-      if (url.includes('youtube.com/watch?v=')) url = url.replace('youtube.com/watch?v=','youtube.com/embed/');
-      if (url.includes('youtu.be/')) url = url.replace('youtu.be/','youtube.com/embed/');
-      if (!url && item.video_file) url = "{{ url_for('uploaded_file', filename='') }}" + item.video_file;
-      frame.src = url || 'about:blank';
-      document.getElementById('videoDescription').innerHTML = item.description || '<p>No description provided.</p>';
-    } else if (item.type === 'quiz') {
-      document.getElementById('quizContent').classList.remove('d-none');
-      document.getElementById('quizQuestions').innerHTML =
-        '<div class="alert alert-info">Quiz questions would render here.</div>';
-    } else if (item.type === 'assignment') {
-      document.getElementById('assignmentContent').classList.remove('d-none');
-      document.getElementById('assignmentInstructions').innerHTML =
-        item.instructions || '<p>Follow the instructions in your course materials.</p>';
-    } else if (item.type === 'exam') {
-      if (!examUnlocked) return; // safety
-      document.getElementById('examContent').classList.remove('d-none');
+    switch (item.type) {
+      case 'lesson':
+        loadLessonContent(item);
+        break;
+      case 'quiz':
+        loadQuizContent(item);
+        break;
+      case 'assignment':
+        loadAssignmentContent(item);
+        break;
+      case 'exam':
+        loadExamContent(item);
+        break;
     }
 
-    // Completion section (hidden for exam)
+    // Show completion toggle for non-exam items
     if (item.type !== 'exam') {
       document.getElementById('completionSection').classList.remove('d-none');
       markComplete.checked = !!progressMap[item.id];
     }
   }
 
-  function postProgress(itemId, completed, cb) {
-    fetch("{{ url_for('update_progress') }}", {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ unit_id: unitId, item_id: itemId, completed: completed })
-    }).then(r => r.json()).then(res => {
-      if (res.success) cb && cb();
-    }).catch(()=>{});
-  }
+  function loadLessonContent(item) {
+    const content = document.getElementById('lessonContent');
+    content.classList.remove('d-none');
 
-  function refreshProgressUI() {
-    const total = {{ total_items or 0 }};
-    if (!total) return;
-    const completed = Object.values(progressMap).filter(Boolean).length;
-    const pct = Math.round((completed / total) * 100);
-    const bar = document.querySelector('.progress-bar');
-    bar.style.width = pct + '%';
-    bar.setAttribute('aria-valuenow', pct);
-    document.querySelector('.card-footer small').textContent =
-      `Your Progress: ${completed}/${total} (${pct}%)`;
-  }
+    // Video content
+    const videoFrame = document.getElementById('lessonVideo');
+    let videoUrl = '';
+    
+    if (item.video_url) {
+      videoUrl = item.video_url;
+      // Convert YouTube URLs to embed format
+      if (videoUrl.includes('youtube.com/watch?v=')) {
+        videoUrl = videoUrl.replace('youtube.com/watch?v=', 'youtube.com/embed/');
+      } else if (videoUrl.includes('youtu.be/')) {
+        videoUrl = videoUrl.replace('youtu.be/', 'youtube.com/embed/');
+      }
+    } else if (item.video_file) {
+      videoUrl = "{{ url_for('uploaded_file', filename='') }}" + item.video_file;
+    }
 
-  function tryUnlockExam() {
-    // If every non-exam item is completed, unlock exam UI
-    const nonExam = linear.filter(x => x.type !== 'exam');
-    const allDone = nonExam.every(x => !!progressMap[x.id]);
-    if (allDone && !examUnlocked) {
-      examUnlocked = true;
-      // Hide lock icons and data-locked flags
-      document.querySelectorAll('.lesson-item[data-type="exam"]').forEach(row => {
-        row.dataset.locked = '0';
-        const lock = row.querySelector('.exam-lock');
-        if (lock) lock.classList.add('d-none');
-      });
-      updateNav();
+    if (videoUrl) {
+      document.getElementById('videoContent').classList.remove('d-none');
+      videoFrame.src = videoUrl;
+    } else {
+      document.getElementById('videoContent').classList.add('d-none');
+    }
+
+    // Lesson description
+    const descriptionEl = document.getElementById('lessonDescription');
+    descriptionEl.innerHTML = item.content || 
+                             item.description || 
+                             '<p class="text-muted">No additional content provided for this lesson.</p>';
+
+    // Lesson materials
+    const materialsEl = document.getElementById('lessonMaterials');
+    if (item.notes_file) {
+      materialsEl.innerHTML = `
+        <div class="d-grid">
+          <a href="{{ url_for('uploaded_file', filename='') }}${item.notes_file}" 
+             class="btn btn-outline-primary btn-sm" target="_blank">
+            <i class="fas fa-download me-1"></i>Download Lesson Notes
+          </a>
+        </div>
+      `;
+    } else {
+      materialsEl.innerHTML = '<p class="text-muted small">No additional materials for this lesson.</p>';
     }
   }
 
-  // Initial UI
-  refreshProgressUI();
+  function loadQuizContent(item) {
+    const content = document.getElementById('quizContent');
+    content.classList.remove('d-none');
+
+    // Quiz instructions
+    const instructionsEl = document.getElementById('quizInstructions');
+    instructionsEl.textContent = item.instructions || 'Complete the quiz to test your understanding.';
+
+    // Quiz questions
+    const questionsEl = document.getElementById('quizQuestions');
+    if (item.content) {
+      try {
+        const questions = JSON.parse(item.content);
+        questionsEl.innerHTML = renderQuizQuestions(questions);
+      } catch (e) {
+        questionsEl.innerHTML = `
+          <div class="alert alert-info">
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            Loading quiz questions...
+          </div>
+        `;
+      }
+    } else {
+      questionsEl.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Quiz content is being prepared. Please check back later.
+        </div>
+      `;
+    }
+  }
+
+  function loadAssignmentContent(item) {
+    const content = document.getElementById('assignmentContent');
+    content.classList.remove('d-none');
+
+    // Assignment instructions
+    const instructionsEl = document.getElementById('assignmentInstructions');
+    instructionsEl.innerHTML = item.instructions || 
+                              item.content || 
+                              '<p class="text-muted">Follow the assignment guidelines provided by your instructor.</p>';
+
+    // Assignment details
+    const detailsEl = document.getElementById('assignmentDetails');
+    let detailsHtml = '';
+    
+    if (item.due_at) {
+      const dueDate = new Date(item.due_at).toLocaleDateString();
+      detailsHtml += `<div class="assignment-detail"><strong>Due Date:</strong> ${dueDate}</div>`;
+    }
+    
+    if (item.points) {
+      detailsHtml += `<div class="assignment-detail"><strong>Points:</strong> ${item.points}</div>`;
+    }
+    
+    if (item.duration) {
+      detailsHtml += `<div class="assignment-detail"><strong>Estimated Time:</strong> ${item.duration}</div>`;
+    }
+
+    detailsEl.innerHTML = detailsHtml || '<p class="text-muted">No additional details provided.</p>';
+  }
+
+  function loadExamContent(item) {
+    const content = document.getElementById('examContent');
+    content.classList.remove('d-none');
+  }
+
+  function renderQuizQuestions(questions) {
+    if (!questions || !Array.isArray(questions)) {
+      return '<div class="alert alert-warning">No questions available for this quiz.</div>';
+    }
+
+    return questions.map((q, index) => `
+      <div class="quiz-question mb-4">
+        <h6>Question ${index + 1}: ${q.text || q.question || 'Question'}</h6>
+        ${(q.options || []).map((opt, optIndex) => `
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="question_${index}" id="q${index}_opt${optIndex}" value="${optIndex}">
+            <label class="form-check-label" for="q${index}_opt${optIndex}">
+              ${opt.text || opt}
+            </label>
+          </div>
+        `).join('')}
+      </div>
+    `).join('');
+  }
+
+  // ----- Progress Management -----
+  function updateProgress(itemId, completed) {
+    fetch("{{ url_for('update_progress') }}", {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        unit_id: unitId,
+        item_id: itemId,
+        completed: completed
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Update progress map
+        progressMap[itemId] = completed;
+        
+        // Update UI
+        const itemEl = document.querySelector(`.lesson-item[data-item-id="${itemId}"]`);
+        if (itemEl) {
+          itemEl.classList.toggle('text-success', completed);
+          const checkbox = itemEl.querySelector('.completion-checkbox');
+          if (checkbox) checkbox.checked = completed;
+        }
+        
+        // Update progress display
+        updateProgressDisplay();
+        
+        // Check if exam should be unlocked
+        checkExamUnlock();
+        
+        showNotification(completed ? 'Item marked as completed!' : 'Item marked as incomplete.', 'success');
+      }
+    })
+    .catch(error => {
+      console.error('Error updating progress:', error);
+      showNotification('Error updating progress. Please try again.', 'error');
+    });
+  }
+
+  function updateProgressDisplay() {
+    const totalItems = linear.filter(item => item.type !== 'exam').length;
+    const completedItems = Object.values(progressMap).filter(Boolean).length;
+    const progressPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
+    // Update progress bar
+    const progressBar = document.querySelector('.progress-bar');
+    progressBar.style.width = `${progressPercentage}%`;
+    progressBar.setAttribute('aria-valuenow', progressPercentage);
+
+    // Update progress text
+    const progressText = document.querySelector('.card-footer small');
+    progressText.textContent = `Your Progress: ${completedItems}/${totalItems} (${progressPercentage}%)`;
+  }
+
+  function checkExamUnlock() {
+    const nonExamItems = linear.filter(item => item.type !== 'exam');
+    const allCompleted = nonExamItems.every(item => progressMap[item.id]);
+    
+    if (allCompleted && !examUnlocked) {
+      examUnlocked = true;
+      
+      // Update exam items in sidebar
+      document.querySelectorAll('.lesson-item[data-type="exam"]').forEach(itemEl => {
+        itemEl.dataset.locked = '0';
+        itemEl.classList.remove('text-muted');
+        
+        const lockIcon = itemEl.querySelector('.fa-lock');
+        const starIcon = itemEl.querySelector('.fa-star');
+        if (lockIcon) lockIcon.classList.add('d-none');
+        if (starIcon) starIcon.classList.remove('d-none');
+      });
+      
+      showNotification('Congratulations! Final exam is now unlocked.', 'success');
+      updateNavigation();
+    }
+  }
+
+  function showNotification(message, type = 'info') {
+    // Simple notification implementation
+    const alertClass = {
+      'success': 'alert-success',
+      'error': 'alert-danger',
+      'warning': 'alert-warning',
+      'info': 'alert-info'
+    }[type] || 'alert-info';
+
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show`;
+    notification.innerHTML = `
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+    }, 5000);
+  }
+
+  // ----- Initialization -----
+  function initialize() {
+    updateProgressDisplay();
+    
+    // Show welcome content by default
+    hideAllContent();
+    document.getElementById('welcomeContent').classList.remove('d-none');
+    
+    // Expand first chapter by default
+    const firstChapter = document.querySelector('.chapter-item');
+    if (firstChapter) {
+      firstChapter.classList.remove('collapsed');
+    }
+  }
+
+  // Start the application
+  initialize();
 });
 </script>
 {% endblock %}
