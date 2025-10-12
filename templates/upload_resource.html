@@ -55,7 +55,7 @@
             <div class="card-body">
               <h5 class="card-title">Lesson</h5>
               <p class="card-text text-muted small">Add learning materials and content</p>
-              <a href="{{ url_for('add_lesson', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm" target="_blank">
+              <a href="{{ url_for('add_lesson_page', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm" target="_blank">
                 + Add Lesson
               </a>
             </div>
@@ -66,7 +66,7 @@
             <div class="card-body">
               <h5 class="card-title">Quiz</h5>
               <p class="card-text text-muted small">Create assessment questions</p>
-              <a href="{{ url_for('add_quiz', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm" target="_blank">
+              <a href="{{ url_for('add_quiz_page', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm" target="_blank">
                 + Add Quiz
               </a>
             </div>
@@ -77,7 +77,7 @@
             <div class="card-body">
               <h5 class="card-title">Assignment</h5>
               <p class="card-text text-muted small">Create tasks for students</p>
-              <a href="{{ url_for('add_assignment', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm" target="_blank">
+              <a href="{{ url_for('add_assignment_page', unit_id=unit.id) }}" class="btn btn-outline-primary btn-sm" target="_blank">
                 + Add Assignment
               </a>
             </div>
@@ -110,7 +110,7 @@
           <div class="card-body">
             <h5 class="card-title text-success">Final Exam</h5>
             <p class="card-text text-muted">You can now upload the final exam for this course</p>
-            <a href="{{ url_for('add_exam', unit_id=unit.id) }}" class="btn btn-success" target="_blank">
+            <a href="{{ url_for('add_exam_page', unit_id=unit.id) }}" class="btn btn-success" target="_blank">
               + Upload Final Exam
             </a>
           </div>
