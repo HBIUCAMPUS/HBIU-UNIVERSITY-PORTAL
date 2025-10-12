@@ -1,27 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="row">
-  <div class="col-md-12">
-    <h4 class="mb-4">Curriculum</h4>
+<div class="container-fluid">
+  <!-- Header Section -->
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <h1 class="h3 mb-0">HBI Virtual Campus</h1>
+    </div>
+  </div>
 
-    <!-- Course Title Section -->
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title text-uppercase mb-1">{{ unit.title if unit else "COURSE TITLE" }}</h5>
-        <p class="card-text text-muted mb-0">{{ unit.description or "Course description will appear here" }}</p>
+  <!-- Main Content -->
+  <div class="row">
+    <div class="col-md-12">
+      <h2 class="h4 mb-4">Curriculum</h2>
+
+      <!-- Course Title Section -->
+      <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body">
+          <h3 class="card-title text-uppercase fw-bold mb-2" style="color: #2c3e50; font-size: 1.1rem;">
+            {{ unit.title if unit else "INTRODUCTION TO PROGRAMMING" }}
+          </h3>
+          <p class="card-text text-muted mb-0 small">
+            {{ unit.description or "Course description will appear here" }}
+          </p>
+        </div>
       </div>
-    </div>
 
-    <!-- Curriculum Items (rendered from API) -->
-    <div id="curriculumList" class="mb-4">
-      <!-- Filled by JS -->
-    </div>
+      <!-- Curriculum Items -->
+      <div id="curriculumList" class="mb-4">
+        <!-- Filled by JS -->
+      </div>
 
-    <!-- Add Chapter Button -->
-    <div class="text-center mt-4">
-      <button id="btnAddChapter" class="btn btn-royal-blue">
-        + Add Chapter
-      </button>
+      <!-- Add Chapter Button -->
+      <div class="text-center mt-4">
+        <button id="btnAddChapter" class="btn btn-primary btn-sm">
+          + Add Chapter
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -30,8 +44,10 @@
 <div class="modal fade" id="lessonModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <form class="modal-content" id="lessonForm" enctype="multipart/form-data">
-      <div class="modal-header"><h5 class="modal-title">Add Lesson</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title">Add Lesson</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" name="chapter_id" id="lesson_chapter_id">
         <div class="mb-3">
@@ -73,17 +89,26 @@
 <div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" id="quizForm" enctype="multipart/form-data">
-      <div class="modal-header"><h5 class="modal-title">Add Quiz</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title">Add Quiz</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" name="chapter_id" id="quiz_chapter_id">
-        <div class="mb-3"><label class="form-label">Title</label>
-          <input name="title" class="form-control" required></div>
-        <div class="mb-3"><label class="form-label">Description</label>
-          <textarea name="description" class="form-control" rows="3"></textarea></div>
-        <div class="mb-3"><label class="form-label">Duration (e.g., 10m)</label>
-          <input name="duration" class="form-control"></div>
-        <div class="mb-3"><label class="form-label">Upload Quiz File (optional)</label>
+        <div class="mb-3">
+          <label class="form-label">Title</label>
+          <input name="title" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Duration (e.g., 10m)</label>
+          <input name="duration" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Upload Quiz File (optional)</label>
           <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx">
         </div>
       </div>
@@ -99,17 +124,26 @@
 <div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <form class="modal-content" id="assignmentForm" enctype="multipart/form-data">
-      <div class="modal-header"><h5 class="modal-title">Add Assignment</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header">
+        <h5 class="modal-title">Add Assignment</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
       <div class="modal-body">
         <input type="hidden" name="chapter_id" id="assignment_chapter_id">
-        <div class="mb-3"><label class="form-label">Title</label>
-          <input name="title" class="form-control" required></div>
-        <div class="mb-3"><label class="form-label">Instructions</label>
-          <textarea name="instructions" class="form-control" rows="4"></textarea></div>
-        <div class="mb-3"><label class="form-label">Due/Duration (optional)</label>
-          <input name="duration" class="form-control" placeholder="e.g., Due week 3"></div>
-        <div class="mb-3"><label class="form-label">Upload Attachment (optional)</label>
+        <div class="mb-3">
+          <label class="form-label">Title</label>
+          <input name="title" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Instructions</label>
+          <textarea name="instructions" class="form-control" rows="4"></textarea>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Due/Duration (optional)</label>
+          <input name="duration" class="form-control" placeholder="e.g., Due week 3">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Upload Attachment (optional)</label>
           <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx,.zip">
         </div>
       </div>
@@ -122,16 +156,107 @@
 </div>
 
 <style>
-.curriculum-section .card { border-left: 4px solid #4e73df; transition: all .3s }
-.curriculum-section .card:hover { transform: translateX(5px); box-shadow: 0 4px 8px rgba(0,0,0,.1) }
-.card-title { color:#2c3e50; font-weight:600; font-size:1.5rem }
-.card-text { color:#7f8c8d; font-size:.9rem }
-.btn-royal-blue{background:#4e73df;border-color:#4e73df;color:#fff;padding:10px 30px;font-weight:600}
-.btn-royal-blue:hover{background:#2e59d9;border-color:#2e59d9;transform:translateY(-2px);box-shadow:0 4px 8px rgba(0,0,0,.2)}
-.chapter-card{border-left:4px solid #4e73df}
-.chapter-header{display:flex;justify-content:space-between;align-items:center}
-.item-row{display:flex;justify-content:space-between;align-items:center;padding:.5rem .25rem;border-radius:6px}
-.item-row:hover{background:#f8f9fa}
+/* Main styling to match the design */
+.card {
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 1rem;
+}
+
+.card-title {
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.card-text {
+  color: #7f8c8d;
+  font-size: 0.875rem;
+}
+
+.chapter-card {
+  border-left: 4px solid #4e73df;
+  transition: all 0.3s ease;
+}
+
+.chapter-card:hover {
+  transform: translateX(2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.chapter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.chapter-title {
+  color: #2c3e50;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.chapter-description {
+  color: #7f8c8d;
+  font-size: 0.875rem;
+}
+
+.item-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.item-type {
+  font-weight: 600;
+  color: #4e73df;
+  font-size: 0.875rem;
+  text-transform: capitalize;
+}
+
+.item-title {
+  color: #2c3e50;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.item-duration {
+  color: #7f8c8d;
+  font-size: 0.8rem;
+}
+
+.btn-group .btn {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.5rem;
+  margin-left: 0.25rem;
+}
+
+.btn-primary {
+  background-color: #4e73df;
+  border-color: #4e73df;
+}
+
+.btn-primary:hover {
+  background-color: #2e59d9;
+  border-color: #2e59d9;
+}
+
+/* Header styling */
+h1 {
+  color: #2c3e50;
+  font-weight: 700;
+}
+
+h2 {
+  color: #2c3e50;
+  font-weight: 600;
+  border-bottom: 2px solid #4e73df;
+  padding-bottom: 0.5rem;
+}
 </style>
 
 <script>
@@ -143,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const quizModal = new bootstrap.Modal(document.getElementById('quizModal'));
   const assignmentModal = new bootstrap.Modal(document.getElementById('assignmentModal'));
 
-  // Render
+  // Render curriculum
   async function loadCurriculum() {
     const res = await fetch(`{{ url_for('api_get_curriculum', unit_id=0) }}`.replace('0', unitId));
     const json = await res.json();
@@ -153,27 +278,26 @@ document.addEventListener('DOMContentLoaded', () => {
     curriculumEl.innerHTML = '';
     chapters.forEach(ch => {
       const card = document.createElement('div');
-      card.className = 'card chapter-card mb-3';
+      card.className = 'card chapter-card';
       card.innerHTML = `
         <div class="card-body">
           <div class="chapter-header">
             <div>
-              <h6 class="mb-1">+ ${escapeHtml(ch.title)}</h6>
-              <small class="text-muted">${escapeHtml(ch.description || '')}</small>
+              <h6 class="chapter-title">+ ${escapeHtml(ch.title)}</h6>
+              <small class="chapter-description">${escapeHtml(ch.description || '')}</small>
             </div>
             <div class="btn-group">
-              <button class="btn btn-outline-primary btn-sm add-lesson" data-ch="${ch.id}">Add Lesson</button>
-              <button class="btn btn-outline-primary btn-sm add-quiz" data-ch="${ch.id}">Add Quiz</button>
-              <button class="btn btn-outline-primary btn-sm add-assignment" data-ch="${ch.id}">Add Assignment</button>
+              <button class="btn btn-outline-primary btn-sm add-lesson" data-ch="${ch.id}">Lesson</button>
+              <button class="btn btn-outline-primary btn-sm add-quiz" data-ch="${ch.id}">Quiz</button>
+              <button class="btn btn-outline-primary btn-sm add-assignment" data-ch="${ch.id}">Assignment</button>
             </div>
           </div>
-          <div class="mt-3">
+          <div class="curriculum-items">
             ${(ch.items || []).map(it => `
-              <div class="item-row">
-                <div>
-                  <strong class="text-capitalize">${it.type}</strong> • ${escapeHtml(it.title)}
-                </div>
-                ${it.duration ? `<small class="text-muted">${escapeHtml(it.duration)}</small>` : ''}
+              <div class="item-card">
+                <div class="item-type">${it.type}</div>
+                <div class="item-title">${escapeHtml(it.title)}</div>
+                ${it.duration ? `<div class="item-duration">${escapeHtml(it.duration)}</div>` : ''}
               </div>
             `).join('')}
           </div>
@@ -182,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
       curriculumEl.appendChild(card);
     });
 
-    // hook buttons
+    // Hook buttons
     curriculumEl.querySelectorAll('.add-lesson').forEach(b => b.addEventListener('click', () => {
       document.getElementById('lesson_chapter_id').value = b.dataset.ch;
       document.getElementById('lessonForm').reset();
@@ -202,7 +326,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Add chapter
   document.getElementById('btnAddChapter').addEventListener('click', async () => {
-    // quick prompt for name; default handled server-side
     const title = prompt('Enter chapter title (leave blank for automatic):', '');
     const form = new FormData();
     if (title) form.append('title', title);
@@ -261,7 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
-  // initial
+  // Initial load
   loadCurriculum();
 });
 </script>
