@@ -55,7 +55,7 @@
             <div class="card-body">
               <h5 class="card-title">Lesson</h5>
               <p class="card-text text-muted small">Add learning materials and content</p>
-              <a href="{{ url_for('add_lesson') }}" class="btn btn-outline-primary btn-sm">
+              <a href="{{ url_for('add_lesson') }}" class="btn btn-outline-primary btn-sm" target="_blank">
                 + Add Lesson
               </a>
             </div>
@@ -66,7 +66,7 @@
             <div class="card-body">
               <h5 class="card-title">Quiz</h5>
               <p class="card-text text-muted small">Create assessment questions</p>
-              <a href="{{ url_for('add_quiz') }}" class="btn btn-outline-primary btn-sm">
+              <a href="{{ url_for('add_quiz') }}" class="btn btn-outline-primary btn-sm" target="_blank">
                 + Add Quiz
               </a>
             </div>
@@ -77,7 +77,7 @@
             <div class="card-body">
               <h5 class="card-title">Assignment</h5>
               <p class="card-text text-muted small">Create tasks for students</p>
-              <a href="{{ url_for('add_assignment') }}" class="btn btn-outline-primary btn-sm">
+              <a href="{{ url_for('add_assignment') }}" class="btn btn-outline-primary btn-sm" target="_blank">
                 + Add Assignment
               </a>
             </div>
@@ -110,11 +110,16 @@
           <div class="card-body">
             <h5 class="card-title text-success">Final Exam</h5>
             <p class="card-text text-muted">You can now upload the final exam for this course</p>
-            <a href="{{ url_for('add_exam') }}" class="btn btn-success">
+            <a href="{{ url_for('add_exam') }}" class="btn btn-success" target="_blank">
               + Upload Final Exam
             </a>
           </div>
         </div>
+      </div>
+
+      <!-- Saved Exams Section -->
+      <div id="savedExamsList" class="mb-4">
+        <!-- Saved exams will appear here -->
       </div>
     </div>
   </div>
@@ -137,9 +142,22 @@
   border-left: 4px solid #4e73df;
 }
 
+.exam-card {
+  border-left: 4px solid #28a745;
+}
+
 .item-badge {
   background: #e3f2fd;
   color: #1976d2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.exam-badge {
+  background: #d4edda;
+  color: #155724;
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
   font-size: 0.8rem;
@@ -200,12 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const quizList = document.getElementById('quizList');
   const assignmentList = document.getElementById('assignmentList');
   const savedChaptersList = document.getElementById('savedChaptersList');
+  const savedExamsList = document.getElementById('savedExamsList');
   const btnSaveChapter = document.getElementById('btnSaveChapter');
   const btnNewChapter = document.getElementById('btnNewChapter');
   const finalExamSection = document.getElementById('finalExamSection');
 
   // Initialize
   loadSavedChapters();
+  loadSavedExams();
 
   // Save Chapter
   btnSaveChapter.addEventListener('click', async () => {
@@ -269,6 +289,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (item.type === 'assignment') {
       currentChapter.assignments.push(item);
       addAssignmentToDisplay(item);
+    } else if (item.type === 'exam') {
+      // Handle exam separately (not part of a chapter)
+      addExamToDisplay(item);
+      saveExamToServer(item);
     }
     updateSaveButton();
   };
@@ -325,6 +349,55 @@ document.addEventListener('DOMContentLoaded', () => {
       ${assignment.instructions ? `<div class="mt-1 small text-muted">${escapeHtml(assignment.instructions)}</div>` : ''}
     `;
     assignmentList.appendChild(assignmentEl);
+  }
+
+  function addExamToDisplay(exam) {
+    const examEl = document.createElement('div');
+    examEl.className = 'card exam-card mb-3';
+    examEl.innerHTML = `
+      <div class="card-body">
+        <h5 class="card-title">
+          <span class="exam-badge">Final Exam</span>
+          ${escapeHtml(exam.title)}
+        </h5>
+        <div class="mt-2">
+          <div class="current-item mb-2">
+            <strong>${escapeHtml(exam.title)}</strong>
+            <div class="small text-muted">
+              ${exam.duration ? `<span class="me-3">Duration: ${escapeHtml(exam.duration)}</span>` : ''}
+              ${exam.total_marks ? `<span class="me-3">Total Marks: ${escapeHtml(exam.total_marks)}</span>` : ''}
+              ${exam.question_count ? `<span>Questions: ${escapeHtml(exam.question_count)}</span>` : ''}
+            </div>
+            ${exam.description ? `<div class="mt-1">${escapeHtml(exam.description)}</div>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+    savedExamsList.appendChild(examEl);
+  }
+
+  async function saveExamToServer(exam) {
+    try {
+      const formData = new FormData();
+      formData.append('title', exam.title);
+      formData.append('instructions', exam.instructions);
+      formData.append('duration', exam.duration);
+      formData.append('total_marks', exam.total_marks);
+      formData.append('questions', JSON.stringify(exam.questions));
+      formData.append('type', 'exam');
+
+      const res = await fetch(`{{ url_for('api_create_exam', unit_id=0) }}`.replace('0', unitId), {
+        method: 'POST',
+        body: formData
+      });
+      
+      const json = await res.json();
+      if (!json.ok) {
+        console.error('Failed to save exam:', json.error);
+      }
+    } catch (error) {
+      console.error('Error saving exam:', error);
+    }
   }
 
   function removeItem(type, id) {
@@ -400,6 +473,24 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (error) {
       console.error('Error loading saved chapters:', error);
+    }
+  }
+
+  async function loadSavedExams() {
+    try {
+      const res = await fetch(`{{ url_for('api_get_exams', unit_id=0) }}`.replace('0', unitId));
+      const json = await res.json();
+      
+      if (json.ok) {
+        const exams = json.exams || [];
+        savedExamsList.innerHTML = '';
+        
+        exams.forEach(exam => {
+          addExamToDisplay(exam);
+        });
+      }
+    } catch (error) {
+      console.error('Error loading saved exams:', error);
     }
   }
 
