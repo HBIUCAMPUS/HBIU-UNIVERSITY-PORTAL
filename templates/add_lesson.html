@@ -191,7 +191,7 @@ function syncVideoMode() {
   }
 }
 
-// FORM SUBMISSION HANDLER - UPDATED VERSION
+// FORM SUBMISSION HANDLER - FIXED VERSION
 document.addEventListener('DOMContentLoaded', () => {
   // Video mode toggle
   document.querySelectorAll('input[name="video_mode"]').forEach(r => {
@@ -214,18 +214,32 @@ document.addEventListener('DOMContentLoaded', () => {
         finalChapterId.value = this.value; // Set selected chapter_id
       }
     });
+    
+    // Initialize the finalChapterId with the default selected value
+    if (chapterSelect.value && chapterSelect.value !== 'new') {
+      finalChapterId.value = chapterSelect.value;
+    }
   }
 
-  // Form submission handler
+  // Form submission handler - FIXED
   document.getElementById('lessonForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    const selectedChapter = formData.get('chapter_id');
+    const selectedChapter = document.getElementById('chapterSelect').value;
+    const finalChapterId = document.getElementById('finalChapterId');
+    
+    console.log('Selected chapter:', selectedChapter);
+    console.log('Final chapter ID:', finalChapterId.value);
+    
+    // Validate that we have a chapter ID
+    if (!finalChapterId.value && selectedChapter !== 'new') {
+      alert('Please select a chapter');
+      return;
+    }
     
     // If creating a new chapter, create it via API first
     if (selectedChapter === 'new') {
-      const newChapterTitle = formData.get('new_chapter_title');
+      const newChapterTitle = document.querySelector('input[name="new_chapter_title"]').value;
       
       if (!newChapterTitle) {
         alert('Please enter a chapter title');
@@ -239,23 +253,38 @@ document.addEventListener('DOMContentLoaded', () => {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(formData.get('new_chapter_description') || '')}`
+          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]').value || '')}`
         });
         
         const result = await response.json();
         
         if (result.ok) {
           // Set the new chapter ID and submit the form
-          document.getElementById('finalChapterId').value = result.chapter_id;
-          this.submit(); // Submit the main form with the new chapter_id
+          finalChapterId.value = result.chapter_id;
+          console.log('New chapter created with ID:', result.chapter_id);
+          
+          // Remove the event listener to prevent double submission and submit
+          this.removeEventListener('submit', arguments.callee);
+          this.submit();
         } else {
           alert('Error creating chapter: ' + result.error);
         }
       } catch (error) {
+        console.error('Error creating chapter:', error);
         alert('Error creating chapter: ' + error.message);
       }
     } else {
       // Submit normally for existing chapter
+      console.log('Submitting with existing chapter ID:', finalChapterId.value);
+      
+      // Validate finalChapterId is set
+      if (!finalChapterId.value) {
+        alert('Please select a chapter');
+        return;
+      }
+      
+      // Remove the event listener to prevent double submission and submit
+      this.removeEventListener('submit', arguments.callee);
       this.submit();
     }
   });
