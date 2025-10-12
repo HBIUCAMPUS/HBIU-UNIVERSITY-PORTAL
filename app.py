@@ -897,85 +897,156 @@ def api_create_item(unit_id):
     if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
         return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
 
+    # Debug logging - see what we're receiving
+    print(f"=== API CREATE ITEM DEBUG ===")
+    print(f"Unit ID: {unit_id}")
+    print(f"Form data: {dict(request.form)}")
+    print(f"Files received: {list(request.files.keys())}")
+    
     # Work with form (supports files) or JSON
     data = request.form if request.form else request.json or {}
+    
+    # Extract all possible fields with better handling
     chapter_id = data.get('chapter_id', '')
     item_type = (data.get('type') or '').strip().lower()
     title = (data.get('title') or '').strip()
-    description = (data.get('description') or '').strip()
+    
+    # Handle both 'description' and 'content' fields for flexibility
+    description = data.get('description', '')
+    content = data.get('content', '')
+    # Use content if provided, otherwise description
+    final_content = content if content else description
+    
     duration = (data.get('duration') or '').strip()
     video_url = (data.get('video_url') or '').strip()
     instructions = (data.get('instructions') or '').strip()
 
-    # Validate chapter_id - FIXED: Handle empty string case
+    print(f"DEBUG - chapter_id: '{chapter_id}'")
+    print(f"DEBUG - item_type: '{item_type}'")
+    print(f"DEBUG - title: '{title}'")
+    print(f"DEBUG - description: '{description}'")
+    print(f"DEBUG - content: '{content}'")
+    print(f"DEBUG - final_content: '{final_content}'")
+    print(f"DEBUG - duration: '{duration}'")
+    print(f"DEBUG - instructions: '{instructions}'")
+
+    # Validate chapter_id - Handle empty string case
     try:
         chapter_id = int(chapter_id) if chapter_id else 0
-    except (ValueError, TypeError):
-        return jsonify({'ok': False, 'error': 'Invalid chapter_id'}), 400
+    except (ValueError, TypeError) as e:
+        print(f"DEBUG - Invalid chapter_id: {chapter_id}, error: {e}")
+        return jsonify({'ok': False, 'error': f'Invalid chapter_id: {chapter_id}'}), 400
 
-    if not chapter_id or item_type not in ['lesson', 'quiz', 'assignment'] or not title:
-        return jsonify({'ok': False, 'error': 'Missing or invalid fields'}), 400
+    # Enhanced validation with specific error messages
+    if not chapter_id:
+        print("DEBUG - Missing chapter_id")
+        return jsonify({'ok': False, 'error': 'Please select a chapter'}), 400
+        
+    if item_type not in ['lesson', 'quiz', 'assignment']:
+        print(f"DEBUG - Invalid item type: {item_type}")
+        return jsonify({'ok': False, 'error': f'Invalid item type: {item_type}. Must be lesson, quiz, or assignment.'}), 400
+        
+    if not title:
+        print("DEBUG - Missing title")
+        return jsonify({'ok': False, 'error': 'Title is required'}), 400
+
+    # Verify the chapter belongs to this unit
+    try:
+        chapters = db.get_unit_chapters(unit_id) or []
+        chapter_ids = [chapter['id'] if hasattr(chapter, 'get') else chapter[0] for chapter in chapters]
+        if chapter_id not in chapter_ids:
+            print(f"DEBUG - Chapter {chapter_id} not found in unit {unit_id}")
+            return jsonify({'ok': False, 'error': 'Chapter not found in this unit'}), 400
+    except Exception as e:
+        print(f"DEBUG - Error verifying chapter: {e}")
 
     # Find next order_index inside this chapter
     items = db.get_chapter_items(chapter_id) or []
     next_idx = (max([i.get('order_index', 0) for i in items]) + 1) if items else 1
+    print(f"DEBUG - Next order index: {next_idx}")
 
-    # Optional files
+    # Handle file uploads with better error handling
     video_filename = None
     notes_filename = None
     attachment_filename = None
 
-    if 'video_file' in request.files and request.files['video_file'].filename:
-        vf = request.files['video_file']
-        video_filename = secure_filename(vf.filename)
-        vf.save(os.path.join(app.config['UPLOAD_FOLDER'], video_filename))
+    try:
+        if 'video_file' in request.files and request.files['video_file'].filename:
+            vf = request.files['video_file']
+            video_filename = secure_filename(vf.filename)
+            video_path = os.path.join(app.config['UPLOAD_FOLDER'], video_filename)
+            vf.save(video_path)
+            print(f"DEBUG - Saved video file: {video_filename}")
 
-    if 'notes_file' in request.files and request.files['notes_file'].filename:
-        nf = request.files['notes_file']
-        notes_filename = secure_filename(nf.filename)
-        nf.save(os.path.join(app.config['UPLOAD_FOLDER'], notes_filename))
+        if 'notes_file' in request.files and request.files['notes_file'].filename:
+            nf = request.files['notes_file']
+            notes_filename = secure_filename(nf.filename)
+            notes_path = os.path.join(app.config['UPLOAD_FOLDER'], notes_filename)
+            nf.save(notes_path)
+            print(f"DEBUG - Saved notes file: {notes_filename}")
 
-    if 'attachment' in request.files and request.files['attachment'].filename:
-        af = request.files['attachment']
-        attachment_filename = secure_filename(af.filename)
-        af.save(os.path.join(app.config['UPLOAD_FOLDER'], attachment_filename))
+        if 'attachment' in request.files and request.files['attachment'].filename:
+            af = request.files['attachment']
+            attachment_filename = secure_filename(af.filename)
+            attachment_path = os.path.join(app.config['UPLOAD_FOLDER'], attachment_filename)
+            af.save(attachment_path)
+            print(f"DEBUG - Saved attachment file: {attachment_filename}")
+    except Exception as e:
+        print(f"DEBUG - Error saving files: {e}")
+        return jsonify({'ok': False, 'error': f'Error uploading files: {str(e)}'}), 400
 
-    # Persist
-    item_id = db.add_chapter_item(
-        chapter_id=chapter_id,
-        title=title,
-        type=item_type,
-        content=description,             # reuse 'content' column for lesson body/description
-        video_url=video_url,
-        video_file=video_filename,
-        instructions=instructions or (f'Notes: {notes_filename}' if notes_filename else None),
-        duration=duration,
-        order_index=next_idx,
-        attachment_filename=attachment_filename
-    )
-
-    if not item_id:
-        return jsonify({'ok': False, 'error': 'Failed to create item'}), 400
-
-    return jsonify({'ok': True, 'item_id': item_id})
-# ==================== TEACHER PAGES ====================
-
-@app.route('/unit/<int:unit_id>/add_lesson')
-def add_lesson_page(unit_id):
-    """Page for adding a new lesson"""
-    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
-        flash('Please login as lecturer or admin', 'warning')
-        return redirect(url_for('login'))
+    # Build instructions based on item type and available files
+    final_instructions = instructions
+    if not final_instructions and notes_filename:
+        final_instructions = f'Notes: {notes_filename}'
     
-    unit = db.get_unit_by_id(unit_id)
-    if not unit:
-        flash('Unit not found', 'danger')
-        return redirect(url_for('lecturer_dashboard'))
-    
-    # Get existing chapters for this unit
-    chapters = db.get_unit_chapters(unit_id) or []
-    
-    return render_template('add_lesson.html', unit=unit, chapters=chapters)
+    # For quizzes, include question data if present
+    if item_type == 'quiz' and content:
+        try:
+            questions_data = json.loads(content)
+            if questions_data and len(questions_data) > 0:
+                if not final_instructions:
+                    final_instructions = f"Quiz with {len(questions_data)} questions"
+                else:
+                    final_instructions += f" | {len(questions_data)} questions"
+        except json.JSONDecodeError:
+            print("DEBUG - Invalid JSON in quiz content")
+
+    print(f"DEBUG - Final instructions: {final_instructions}")
+    print(f"DEBUG - Final content: {final_content}")
+
+    # Persist to database
+    try:
+        item_id = db.add_chapter_item(
+            chapter_id=chapter_id,
+            title=title,
+            type=item_type,
+            content=final_content,
+            video_url=video_url,
+            video_file=video_filename,
+            instructions=final_instructions,
+            duration=duration,
+            order_index=next_idx,
+            attachment_filename=attachment_filename
+        )
+
+        if not item_id:
+            print("DEBUG - Database returned no item_id")
+            return jsonify({'ok': False, 'error': 'Failed to create item in database'}), 400
+
+        print(f"DEBUG - Successfully created item with ID: {item_id}")
+        
+        # Return success with additional info
+        return jsonify({
+            'ok': True, 
+            'item_id': item_id,
+            'message': f'{item_type.title()} created successfully!',
+            'redirect_url': url_for('learning_interface', unit_id=unit_id)
+        })
+
+    except Exception as e:
+        print(f"DEBUG - Database error: {e}")
+        return jsonify({'ok': False, 'error': f'Database error: {str(e)}'}), 400
 
 @app.route('/unit/<int:unit_id>/add_quiz')
 def add_quiz_page(unit_id):
