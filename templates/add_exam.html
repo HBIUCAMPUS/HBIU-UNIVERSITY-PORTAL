@@ -14,7 +14,7 @@
           </div>
         {% endif %}
 
-        <form method="POST">
+        <form id="examForm" method="POST">
           <div class="mb-3">
             <label class="form-label">Exam Title</label>
             <input name="title" class="form-control" placeholder="Final Examination" required value="Final Examination">
@@ -46,11 +46,57 @@
             <textarea name="questions_json" class="form-control" rows="10" required></textarea>
           </div>
 
-          <button class="btn btn-primary" {% if not can_create %}disabled{% endif %}>Create Exam</button>
+          <button type="submit" class="btn btn-primary" {% if not can_create %}disabled{% endif %}>Create Exam</button>
           <a class="btn btn-outline-secondary" href="{{ url_for('unit_detail', unit_id=unit.id) }}">Cancel</a>
         </form>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+// FORM SUBMISSION HANDLER FOR EXAM
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('examForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(this);
+    const title = formData.get('title');
+    const instructions = formData.get('instructions');
+    const duration = formData.get('duration');
+    const totalMarks = formData.get('total_marks');
+    const questionsJson = formData.get('questions_json');
+    
+    try {
+      // Parse questions to count them
+      const questions = JSON.parse(questionsJson);
+      const questionCount = questions.length;
+      
+      // THIS IS THE CODE THAT SENDS DATA BACK TO UPLOAD.HTML
+      if (window.opener && window.opener.addChapterItem) {
+        window.opener.addChapterItem({
+          id: Date.now(),
+          type: 'exam',
+          title: title,
+          description: instructions ? instructions.substring(0, 100) + (instructions.length > 100 ? '...' : '') : '',
+          duration: duration ? `${duration} minutes` : '',
+          instructions: instructions,
+          total_marks: totalMarks || '100',
+          question_count: questionCount,
+          questions: questions,
+          is_final_exam: true
+        });
+        window.close(); // Close the popup window
+      } else {
+        // Fallback: submit the form normally if no opener
+        this.submit();
+      }
+    } catch (error) {
+      alert('Error parsing questions JSON. Please check the format and try again.');
+      console.error('JSON parse error:', error);
+    }
+  });
+});
+</script>
 {% endblock %}
