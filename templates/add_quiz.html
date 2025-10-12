@@ -192,5 +192,48 @@ function syncJSON() {
   });
   qPayload.value = JSON.stringify(data);
 }
+
+// FORM SUBMISSION HANDLER - ADDED CODE
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('quizForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(this);
+    const title = formData.get('title');
+    const instructions = formData.get('instructions');
+    const durationMinutes = formData.get('duration_minutes');
+    const maxAttempts = formData.get('max_attempts');
+    
+    // Calculate duration for display
+    const duration = durationMinutes ? `${durationMinutes}m` : '';
+    
+    // Get questions data
+    const questions = JSON.parse(qPayload.value || '[]');
+    const questionCount = questions.length;
+    
+    // THIS IS THE CODE THAT SENDS DATA BACK TO UPLOAD.HTML
+    if (window.opener && window.opener.addChapterItem) {
+      window.opener.addChapterItem({
+        id: Date.now(),
+        type: 'quiz',
+        title: title,
+        description: instructions ? instructions.substring(0, 100) + (instructions.length > 100 ? '...' : '') : '',
+        duration: duration,
+        instructions: instructions,
+        question_count: questionCount,
+        max_attempts: maxAttempts || '1',
+        shuffle: formData.get('shuffle') === 'on',
+        show_answers: formData.get('show_answers') === 'on',
+        is_preview: formData.get('is_preview') === 'on',
+        questions: questions
+      });
+      window.close(); // Close the popup window
+    } else {
+      // Fallback: submit the form normally if no opener
+      this.submit();
+    }
+  });
+});
 </script>
 {% endblock %}
