@@ -37,8 +37,8 @@
         <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
         <div id="newChapterSection" class="d-none">
           <div class="mb-3">
-            <label class="form-label">New Chapter Title</label>
-            <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
+            <label class="form-label">New Chapter Title <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Chapter Description</label>
@@ -65,18 +65,26 @@
         <div class="card-body">
           <!-- Title -->
           <div class="mb-3">
-            <label class="form-label">Name <span class="text-danger">*</span></label>
+            <label class="form-label">Assignment Title <span class="text-danger">*</span></label>
             <input type="text" class="form-control" name="title" placeholder="Enter assignment title"
                    value="{{ item.title if item else '' }}" required>
           </div>
 
           <!-- Instructions -->
           <div class="mb-2 d-flex justify-content-between align-items-center">
-            <label class="form-label mb-0">Instructions</label>
+            <label class="form-label mb-0">Assignment Instructions <span class="text-danger">*</span></label>
             <span class="text-muted small">Describe the task and submission format</span>
           </div>
           <textarea class="form-control" name="instructions" rows="8"
-            placeholder="Write assignment details…">{{ item.instructions if item else '' }}</textarea>
+            placeholder="Write assignment details, requirements, submission guidelines, and evaluation criteria…" required>{{ item.instructions if item else '' }}</textarea>
+          
+          <!-- Learning Objectives -->
+          <div class="mt-3">
+            <label class="form-label">Learning Objectives</label>
+            <textarea class="form-control" name="content" rows="3" 
+                      placeholder="What should students learn from this assignment? (Optional)">{{ item.content if item else '' }}</textarea>
+            <div class="form-text">Describe the key learning outcomes for this assignment</div>
+          </div>
         </div>
       </div>
     </div>
@@ -88,43 +96,91 @@
           <h6 class="card-title mb-3">Assignment Files</h6>
           <div class="mb-3">
             <label class="form-label">Upload Assignment Brief</label>
-            <input class="form-control" type="file" name="attachment" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip">
-            <div class="form-text">Attach the assignment brief or starter files</div>
+            <input class="form-control" type="file" name="attachment" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.txt">
+            <div class="form-text">Attach the assignment brief, template, or starter files</div>
           </div>
 
           <div class="mb-3">
             <label class="form-label">Reference Materials (optional)</label>
             <input class="form-control" type="file" name="notes_file" multiple
-                   accept=".pdf,.doc,.docx,.ppt,.pptx,.zip">
-            <div class="form-text">Additional reference materials for students</div>
+                   accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.jpg,.png">
+            <div class="form-text">Additional reading materials, examples, or resources</div>
           </div>
 
           <hr>
           <h6 class="card-title mb-3">Submission & Grading</h6>
+          
           <div class="mb-3">
-            <label class="form-label">Due Date</label>
+            <label class="form-label">Due Date & Time</label>
             <input type="datetime-local" class="form-control" name="due_at" value="{{ item.due_at if item else '' }}">
+            <div class="form-text">Set deadline for submission</div>
           </div>
 
           <div class="row g-2 mb-3">
             <div class="col-6">
-              <label class="form-label">Points</label>
-              <input type="number" min="0" class="form-control" name="points" placeholder="100">
+              <label class="form-label">Total Points</label>
+              <input type="number" min="0" class="form-control" name="points" placeholder="100" value="100">
+              <div class="form-text">Max score</div>
             </div>
             <div class="col-6">
               <label class="form-label">Estimated Time</label>
               <input type="text" class="form-control" name="duration" placeholder="e.g., 2 hours">
+              <div class="form-text">For students</div>
             </div>
           </div>
 
+          <div class="mb-3">
+            <label class="form-label">Submission Format</label>
+            <select class="form-select" name="submission_format">
+              <option value="">Any format</option>
+              <option value="pdf">PDF only</option>
+              <option value="document">Document (Word)</option>
+              <option value="presentation">Presentation</option>
+              <option value="code">Code files</option>
+              <option value="multimedia">Multimedia</option>
+            </select>
+            <div class="form-text">Preferred submission format</div>
+          </div>
+
           <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" name="accept_late" id="accept_late">
+            <input class="form-check-input" type="checkbox" name="accept_late" id="accept_late" value="true">
             <label class="form-check-label" for="accept_late">Allow late submissions</label>
           </div>
           <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="plagiarism_check" id="plagiarism_check">
+            <input class="form-check-input" type="checkbox" name="plagiarism_check" id="plagiarism_check" value="true">
             <label class="form-check-label" for="plagiarism_check">Enable plagiarism check</label>
           </div>
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="group_assignment" id="group_assignment" value="true">
+            <label class="form-check-label" for="group_assignment">Group assignment</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grading Rubric -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Grading Criteria</h6>
+          
+          <div class="mb-3">
+            <label class="form-label">Grading Method</label>
+            <select class="form-select" name="grading_method">
+              <option value="points">Points-based</option>
+              <option value="rubric">Rubric-based</option>
+              <option value="complete_incomplete">Complete/Incomplete</option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Feedback Type</label>
+            <select class="form-select" name="feedback_type">
+              <option value="detailed">Detailed feedback</option>
+              <option value="brief">Brief comments</option>
+              <option value="rubric_only">Rubric only</option>
+            </select>
+          </div>
+          
+          <div class="form-text">Set how this assignment will be graded and feedback provided</div>
         </div>
       </div>
 
@@ -136,7 +192,7 @@
             <small class="text-muted">Allow preview before enrollment</small>
           </div>
           <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" name="is_preview"
+            <input class="form-check-input" type="checkbox" role="switch" name="is_preview" value="true"
                    {% if item and item.is_preview %}checked{% endif %}>
           </div>
         </div>
@@ -145,11 +201,26 @@
   </form>
 </div>
 
-<style>.card-title{font-weight:600}</style>
+<style>
+.card-title { font-weight: 600; }
+.required-field::after { content: " *"; color: #dc3545; }
+</style>
 
 <script>
-// FORM SUBMISSION HANDLER - UPDATED VERSION
+// FORM SUBMISSION HANDLER - COMPLETE FIXED VERSION
 document.addEventListener('DOMContentLoaded', () => {
+  // Set minimum datetime to current time
+  const dueDateInput = document.querySelector('input[name="due_at"]');
+  const now = new Date();
+  const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  if (!dueDateInput.value) {
+    // Set default due date to 7 days from now
+    const defaultDueDate = new Date(now);
+    defaultDueDate.setDate(defaultDueDate.getDate() + 7);
+    const defaultDateTime = new Date(defaultDueDate.getTime() - defaultDueDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    dueDateInput.value = defaultDateTime;
+  }
+
   // Chapter selection handling
   const chapterSelect = document.getElementById('chapterSelect');
   const newChapterSection = document.getElementById('newChapterSection');
@@ -159,57 +230,185 @@ document.addEventListener('DOMContentLoaded', () => {
     chapterSelect.addEventListener('change', function() {
       if (this.value === 'new') {
         newChapterSection.classList.remove('d-none');
+        // Make new chapter title required
+        document.querySelector('input[name="new_chapter_title"]').required = true;
         finalChapterId.value = ''; // Clear for new chapter
       } else {
         newChapterSection.classList.add('d-none');
+        // Remove required from new chapter title
+        document.querySelector('input[name="new_chapter_title"]').required = false;
         finalChapterId.value = this.value; // Set selected chapter_id
       }
     });
+    
+    // Initialize the finalChapterId with the default selected value
+    if (chapterSelect.value && chapterSelect.value !== 'new') {
+      finalChapterId.value = chapterSelect.value;
+    }
   }
 
   // Form submission handler
   document.getElementById('assignmentForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    const selectedChapter = formData.get('chapter_id');
+    const selectedChapter = document.getElementById('chapterSelect').value;
+    const finalChapterId = document.getElementById('finalChapterId');
+    const titleInput = document.querySelector('input[name="title"]');
+    const instructionsInput = document.querySelector('textarea[name="instructions"]');
     
-    // If creating a new chapter, create it via API first
+    console.log('=== ASSIGNMENT FORM SUBMISSION ===');
+    console.log('Selected chapter:', selectedChapter);
+    console.log('Final chapter ID:', finalChapterId.value);
+    console.log('Assignment title:', titleInput.value);
+    console.log('Instructions length:', instructionsInput.value.length);
+    
+    // Validate basic required fields
+    if (!selectedChapter || selectedChapter === '') {
+      alert('Please select a chapter');
+      chapterSelect.focus();
+      return;
+    }
+    
+    if (!titleInput.value.trim()) {
+      alert('Please enter an assignment title');
+      titleInput.focus();
+      return;
+    }
+    
+    if (!instructionsInput.value.trim()) {
+      alert('Please enter assignment instructions');
+      instructionsInput.focus();
+      return;
+    }
+    
+    // Validate due date if set
+    const dueDateValue = dueDateInput.value;
+    if (dueDateValue) {
+      const dueDate = new Date(dueDateValue);
+      const now = new Date();
+      if (dueDate < now) {
+        if (!confirm('The due date is in the past. Do you want to continue?')) {
+          dueDateInput.focus();
+          return;
+        }
+      }
+    }
+    
+    // If creating a new chapter, validate and create it first
     if (selectedChapter === 'new') {
-      const newChapterTitle = formData.get('new_chapter_title');
+      const newChapterTitle = document.querySelector('input[name="new_chapter_title"]').value;
       
-      if (!newChapterTitle) {
+      if (!newChapterTitle.trim()) {
         alert('Please enter a chapter title');
+        document.querySelector('input[name="new_chapter_title"]').focus();
         return;
       }
       
       try {
-        // Create new chapter via API
+        console.log('Creating new chapter...');
         const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(formData.get('new_chapter_description') || '')}`
+          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]').value || '')}`
         });
         
         const result = await response.json();
+        console.log('Chapter creation response:', result);
         
         if (result.ok) {
           // Set the new chapter ID and submit the form
-          document.getElementById('finalChapterId').value = result.chapter_id;
-          this.submit(); // Submit the main form with the new chapter_id
+          finalChapterId.value = result.chapter_id;
+          console.log('New chapter created with ID:', result.chapter_id);
+          
+          // Now submit the main form
+          await submitMainForm();
         } else {
           alert('Error creating chapter: ' + result.error);
         }
       } catch (error) {
+        console.error('Error creating chapter:', error);
         alert('Error creating chapter: ' + error.message);
       }
     } else {
       // Submit normally for existing chapter
-      this.submit();
+      console.log('Submitting with existing chapter ID:', selectedChapter);
+      finalChapterId.value = selectedChapter; // Ensure it's set
+      await submitMainForm();
     }
   });
+
+  // Function to submit the main form and handle response
+  async function submitMainForm() {
+    const form = document.getElementById('assignmentForm');
+    const formData = new FormData(form);
+    
+    // Log what we're sending
+    console.log('=== SUBMITTING FORM DATA ===');
+    const formDataObj = {};
+    for (let [key, value] of formData.entries()) {
+      formDataObj[key] = value;
+      console.log(`${key}: ${value}`);
+    }
+    console.log('=== END FORM DATA ===');
+    
+    try {
+      // Show loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Creating Assignment...';
+      submitBtn.disabled = true;
+      
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      console.log('API Response:', result);
+      
+      // Restore button state
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      
+      if (result.ok) {
+        alert(result.message || 'Assignment created successfully!');
+        // Redirect back to the learning interface
+        setTimeout(() => {
+          window.location.href = result.redirect_url || "{{ url_for('learning_interface', unit_id=unit.id) }}";
+        }, 1000);
+      } else {
+        alert('Error creating assignment: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error creating assignment: ' + error.message);
+      
+      // Restore button state on error
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.textContent = 'Save';
+      submitBtn.disabled = false;
+    }
+  }
+
+  // Add sample content for demonstration
+  setTimeout(() => {
+    const titleInput = document.querySelector('input[name="title"]');
+    const instructionsInput = document.querySelector('textarea[name="instructions"]');
+    const contentInput = document.querySelector('textarea[name="content"]');
+    
+    // Only fill if empty
+    if (!titleInput.value) {
+      titleInput.value = "Research Paper Assignment";
+    }
+    if (!instructionsInput.value) {
+      instructionsInput.value = "Write a 1500-word research paper on a topic of your choice related to course themes.\n\nRequirements:\n- Minimum 5 academic sources\n- APA formatting\n- Abstract and reference list\n- Submit as PDF\n\nGrading Criteria:\n- Research depth (40%)\n- Argument clarity (30%)\n- Writing quality (20%)\n- Formatting (10%)";
+    }
+    if (!contentInput.value) {
+      contentInput.value = "By completing this assignment, students will:\n- Develop research and analytical skills\n- Practice academic writing and citation\n- Synthesize course concepts with external research";
+    }
+  }, 500);
 });
 </script>
 {% endblock %}
