@@ -1928,6 +1928,87 @@ def save_exam_attempt_and_score(exam_id:int, student_id:int, answers:dict):
                         (exam_id,student_id,score,total,payload))
     conn.commit(); conn.close()
     return score, total
+    def get_next_chapter_number(unit_id):
+    """Get the next chapter number for a unit"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("SELECT COUNT(*) FROM chapters WHERE unit_id = %s", (unit_id,))
+        else:
+            cursor.execute("SELECT COUNT(*) FROM chapters WHERE unit_id = ?", (unit_id,))
+        count = cursor.fetchone()[0]
+        return count + 1
+    except Exception as e:
+        print(f"Error getting chapter count: {e}")
+        return 1
+    finally:
+        conn.close()
+
+def add_chapter(unit_id, title, description='', order_index=None):
+    """Add a new chapter to a unit"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if order_index is None:
+            order_index = get_next_chapter_number(unit_id)
+        
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO chapters (unit_id, title, description, order_index) 
+                VALUES (%s, %s, %s, %s) RETURNING id
+            """, (unit_id, title, description, order_index))
+            chapter_id = cursor.fetchone()[0]
+        else:
+            cursor.execute("""
+                INSERT INTO chapters (unit_id, title, description, order_index) 
+                VALUES (?, ?, ?, ?)
+            """, (unit_id, title, description, order_index))
+            chapter_id = cursor.lastrowid
+        
+        conn.commit()
+        return chapter_id
+    except Exception as e:
+        print(f"Error adding chapter: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
+
+def add_chapter_item(chapter_id, title, type, content='', video_url='', video_file='', instructions='', duration='', order_index=None):
+    """Add an item (lesson, quiz, assignment) to a chapter"""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        if order_index is None:
+            # Get next order index for this chapter
+            if os.environ.get('DATABASE_URL'):
+                cursor.execute("SELECT COUNT(*) FROM chapter_items WHERE chapter_id = %s", (chapter_id,))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM chapter_items WHERE chapter_id = ?", (chapter_id,))
+            order_index = cursor.fetchone()[0] + 1
+        
+        if os.environ.get('DATABASE_URL'):
+            cursor.execute("""
+                INSERT INTO chapter_items (chapter_id, title, type, content, video_url, video_file, instructions, duration, order_index)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id
+            """, (chapter_id, title, type, content, video_url, video_file, instructions, duration, order_index))
+            item_id = cursor.fetchone()[0]
+        else:
+            cursor.execute("""
+                INSERT INTO chapter_items (chapter_id, title, type, content, video_url, video_file, instructions, duration, order_index)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (chapter_id, title, type, content, video_url, video_file, instructions, duration, order_index))
+            item_id = cursor.lastrowid
+        
+        conn.commit()
+        return item_id
+    except Exception as e:
+        print(f"Error adding chapter item: {e}")
+        conn.rollback()
+        return None
+    finally:
+        conn.close()
 
 
     return []
