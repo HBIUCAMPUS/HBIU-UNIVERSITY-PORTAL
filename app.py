@@ -1048,6 +1048,24 @@ def api_create_item(unit_id):
         print(f"DEBUG - Database error: {e}")
         return jsonify({'ok': False, 'error': f'Database error: {str(e)}'}), 400
 
+@app.route('/unit/<int:unit_id>/add_lesson')
+def add_lesson_page(unit_id):
+    """Page for adding a new lesson"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please login as lecturer or admin', 'warning')
+        return redirect(url_for('login'))
+    
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('lecturer_dashboard'))
+    
+    # Get existing chapters for this unit
+    chapters = db.get_unit_chapters(unit_id) or []
+    
+    return render_template('add_lesson.html', unit=unit, chapters=chapters)
+
+
 @app.route('/unit/<int:unit_id>/add_quiz')
 def add_quiz_page(unit_id):
     """Page for adding a new quiz"""
