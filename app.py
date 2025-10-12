@@ -957,6 +957,84 @@ def api_create_item(unit_id):
 
     return jsonify({'ok': True, 'item_id': item_id})
 
+# Add these routes for teacher content creation
+
+@app.route('/unit/<int:unit_id>/create-chapter', methods=['POST'])
+def create_chapter(unit_id):
+    """Create a new chapter for a unit"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.form
+        title = data.get('title', f'Chapter {db.get_next_chapter_number(unit_id)}')
+        description = data.get('description', '')
+        
+        chapter_id = db.add_chapter(unit_id, title, description)
+        if chapter_id:
+            return jsonify({'ok': True, 'chapter_id': chapter_id})
+        return jsonify({'ok': False, 'error': 'Failed to create chapter'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+@app.route('/unit/<int:unit_id>/create-item', methods=['POST'])
+def create_chapter_item(unit_id):
+    """Create a lesson, quiz, or assignment item"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        chapter_id = request.form.get('chapter_id')
+        item_type = request.form.get('type')  # lesson, quiz, assignment
+        title = request.form.get('title')
+        content = request.form.get('content', '')
+        instructions = request.form.get('instructions', '')
+        duration = request.form.get('duration', '')
+        
+        if not all([chapter_id, item_type, title]):
+            return jsonify({'ok': False, 'error': 'Missing required fields'})
+        
+        # Handle file uploads
+        video_file = None
+        notes_file = None
+        assignment_file = None
+        
+        if 'video_file' in request.files:
+            video = request.files['video_file']
+            if video.filename:
+                video_file = secure_filename(video.filename)
+                video.save(os.path.join(app.config['UPLOAD_FOLDER'], video_file))
+        
+        if 'notes_file' in request.files:
+            notes = request.files['notes_file']
+            if notes.filename:
+                notes_file = secure_filename(notes.filename)
+                notes.save(os.path.join(app.config['UPLOAD_FOLDER'], notes_file))
+        
+        if 'assignment_file' in request.files:
+            assignment = request.files['assignment_file']
+            if assignment.filename:
+                assignment_file = secure_filename(assignment.filename)
+                assignment.save(os.path.join(app.config['UPLOAD_FOLDER'], assignment_file))
+        
+        item_id = db.add_chapter_item(
+            chapter_id=chapter_id,
+            title=title,
+            type=item_type,
+            content=content,
+            video_url=request.form.get('video_url', ''),
+            video_file=video_file,
+            instructions=instructions,
+            duration=duration,
+            notes_file=notes_file,
+            assignment_file=assignment_file
+        )
+        
+        if item_id:
+            return jsonify({'ok': True, 'item_id': item_id})
+        return jsonify({'ok': False, 'error': 'Failed to create item'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
 # ==================== NEW: LESSON, QUIZ, ASSIGNMENT, EXAM ROUTES ====================
 
 @app.route('/unit/<int:unit_id>/add_lesson')
@@ -971,7 +1049,10 @@ def add_lesson_page(unit_id):
         flash('Unit not found', 'danger')
         return redirect(url_for('lecturer_dashboard'))
     
-    return render_template('add_lesson.html', unit=unit)
+    # Get existing chapters for this unit
+    chapters = db.get_unit_chapters(unit_id) or []
+    
+    return render_template('add_lesson.html', unit=unit, chapters=chapters)
 
 @app.route('/unit/<int:unit_id>/add_quiz')
 def add_quiz_page(unit_id):
@@ -985,7 +1066,8 @@ def add_quiz_page(unit_id):
         flash('Unit not found', 'danger')
         return redirect(url_for('lecturer_dashboard'))
     
-    return render_template('add_quiz.html', unit=unit)
+    chapters = db.get_unit_chapters(unit_id) or []
+    return render_template('add_quiz.html', unit=unit, chapters=chapters)
 
 @app.route('/unit/<int:unit_id>/add_assignment')
 def add_assignment_page(unit_id):
@@ -999,7 +1081,8 @@ def add_assignment_page(unit_id):
         flash('Unit not found', 'danger')
         return redirect(url_for('lecturer_dashboard'))
     
-    return render_template('add_assignment.html', unit=unit)
+    chapters = db.get_unit_chapters(unit_id) or []
+    return render_template('add_assignment.html', unit=unit, chapters=chapters)
 
 @app.route('/unit/<int:unit_id>/add_exam')
 def add_exam_page(unit_id):
@@ -1024,6 +1107,85 @@ def add_exam_page(unit_id):
     can_create = len(chapters) >= 10
     
     return render_template('add_exam.html', unit=unit, can_create=can_create, lesson_count=len(chapters))
+
+# ADD THESE NEW ROUTES FOR HANDLING FORM SUBMISSIONS:
+
+@app.route('/unit/<int:unit_id>/create-chapter', methods=['POST'])
+def create_chapter(unit_id):
+    """Create a new chapter for a unit"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.form
+        title = data.get('title', f'Chapter {db.get_next_chapter_number(unit_id)}')
+        description = data.get('description', '')
+        
+        chapter_id = db.add_chapter(unit_id, title, description)
+        if chapter_id:
+            return jsonify({'ok': True, 'chapter_id': chapter_id})
+        return jsonify({'ok': False, 'error': 'Failed to create chapter'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+@app.route('/unit/<int:unit_id>/create-item', methods=['POST'])
+def create_chapter_item(unit_id):
+    """Create a lesson, quiz, or assignment item"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        chapter_id = request.form.get('chapter_id')
+        item_type = request.form.get('type')  # lesson, quiz, assignment
+        title = request.form.get('title')
+        content = request.form.get('content', '')
+        instructions = request.form.get('instructions', '')
+        duration = request.form.get('duration', '')
+        
+        if not all([chapter_id, item_type, title]):
+            return jsonify({'ok': False, 'error': 'Missing required fields'})
+        
+        # Handle file uploads
+        video_file = None
+        notes_file = None
+        assignment_file = None
+        
+        if 'video_file' in request.files:
+            video = request.files['video_file']
+            if video.filename:
+                video_file = secure_filename(video.filename)
+                video.save(os.path.join(app.config['UPLOAD_FOLDER'], video_file))
+        
+        if 'notes_file' in request.files:
+            notes = request.files['notes_file']
+            if notes.filename:
+                notes_file = secure_filename(notes.filename)
+                notes.save(os.path.join(app.config['UPLOAD_FOLDER'], notes_file))
+        
+        if 'assignment_file' in request.files:
+            assignment = request.files['assignment_file']
+            if assignment.filename:
+                assignment_file = secure_filename(assignment.filename)
+                assignment.save(os.path.join(app.config['UPLOAD_FOLDER'], assignment_file))
+        
+        item_id = db.add_chapter_item(
+            chapter_id=chapter_id,
+            title=title,
+            type=item_type,
+            content=content,
+            video_url=request.form.get('video_url', ''),
+            video_file=video_file,
+            instructions=instructions,
+            duration=duration,
+            notes_file=notes_file,
+            assignment_file=assignment_file
+        )
+        
+        if item_id:
+            return jsonify({'ok': True, 'item_id': item_id})
+        return jsonify({'ok': False, 'error': 'Failed to create item'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
 
 # ==================== API ROUTES FOR EXAMS ====================
 
