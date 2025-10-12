@@ -116,4 +116,50 @@
 </div>
 
 <style>.card-title{font-weight:600}</style>
+
+<script>
+// FORM SUBMISSION HANDLER - ADDED CODE
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('assignmentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(this);
+    const title = formData.get('title');
+    const instructions = formData.get('instructions');
+    const dueAt = formData.get('due_at');
+    const points = formData.get('points');
+    const duration = formData.get('duration');
+    
+    // Format due date for display
+    let dueDisplay = '';
+    if (dueAt) {
+      const dueDate = new Date(dueAt);
+      dueDisplay = dueDate.toLocaleDateString() + ' ' + dueDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+    
+    // THIS IS THE CODE THAT SENDS DATA BACK TO UPLOAD.HTML
+    if (window.opener && window.opener.addChapterItem) {
+      window.opener.addChapterItem({
+        id: Date.now(),
+        type: 'assignment',
+        title: title,
+        description: instructions ? instructions.substring(0, 100) + (instructions.length > 100 ? '...' : '') : '',
+        duration: duration || dueDisplay,
+        instructions: instructions,
+        due_at: dueAt,
+        due_display: dueDisplay,
+        points: points || '100',
+        accept_late: formData.get('accept_late') === 'on',
+        plagiarism_check: formData.get('plagiarism_check') === 'on',
+        is_preview: formData.get('is_preview') === 'on'
+      });
+      window.close(); // Close the popup window
+    } else {
+      // Fallback: submit the form normally if no opener
+      this.submit();
+    }
+  });
+});
+</script>
 {% endblock %}
