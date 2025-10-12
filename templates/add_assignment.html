@@ -18,6 +18,35 @@
       <button class="btn btn-primary" form="assignmentForm" type="submit">Save</button>
     </div>
   </div>
+  <!-- Chapter Selection -->
+<div class="col-12">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Select Chapter <span class="text-danger">*</span></label>
+                <select class="form-select" name="chapter_id" required>
+                    <option value="">-- Select a Chapter --</option>
+                    {% for chapter in chapters %}
+                    <option value="{{ chapter.id }}">{{ chapter.title }}</option>
+                    {% endfor %}
+                    <option value="new">+ Create New Chapter</option>
+                </select>
+            </div>
+            
+            <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
+            <div id="newChapterSection" class="d-none">
+                <div class="mb-3">
+                    <label class="form-label">New Chapter Title</label>
+                    <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Chapter Description</label>
+                    <textarea class="form-control" name="new_chapter_description" rows="2" placeholder="Optional chapter description"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
   <form id="assignmentForm"
       method="POST"
