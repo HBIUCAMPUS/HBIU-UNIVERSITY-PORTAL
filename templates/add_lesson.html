@@ -19,43 +19,46 @@
       <button class="btn btn-primary" form="lessonForm" type="submit">Save</button>
     </div>
   </div>
+  
   <!-- Chapter Selection -->
-<div class="col-12">
+  <div class="col-12">
     <div class="card mb-3">
-        <div class="card-body">
-            <div class="mb-3">
-                <label class="form-label">Select Chapter <span class="text-danger">*</span></label>
-                <select class="form-select" name="chapter_id" required>
-                    <option value="">-- Select a Chapter --</option>
-                    {% for chapter in chapters %}
-                    <option value="{{ chapter.id }}">{{ chapter.title }}</option>
-                    {% endfor %}
-                    <option value="new">+ Create New Chapter</option>
-                </select>
-            </div>
-            
-            <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
-            <div id="newChapterSection" class="d-none">
-                <div class="mb-3">
-                    <label class="form-label">New Chapter Title</label>
-                    <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Chapter Description</label>
-                    <textarea class="form-control" name="new_chapter_description" rows="2" placeholder="Optional chapter description"></textarea>
-                </div>
-            </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Select Chapter <span class="text-danger">*</span></label>
+          <select class="form-select" id="chapterSelect" name="chapter_id" required>
+            <option value="">-- Select a Chapter --</option>
+            {% for chapter in chapters %}
+            <option value="{{ chapter.id }}">{{ chapter.title }}</option>
+            {% endfor %}
+            <option value="new">+ Create New Chapter</option>
+          </select>
         </div>
+        
+        <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
+        <div id="newChapterSection" class="d-none">
+          <div class="mb-3">
+            <label class="form-label">New Chapter Title</label>
+            <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Chapter Description</label>
+            <textarea class="form-control" name="new_chapter_description" rows="2" placeholder="Optional chapter description"></textarea>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
   <form id="lessonForm"
       method="POST"
-      action="{{ url_for('create_chapter_item', unit_id=unit.id) }}"
+      action="{{ url_for('api_create_item', unit_id=unit.id) }}"
       enctype="multipart/form-data"
       class="row g-3">
-    <!-- For lesson form -->
-<input type="hidden" name="type" value="lesson">
+    
+    <!-- Hidden fields for API -->
+    <input type="hidden" name="type" value="lesson">
+    <input type="hidden" name="chapter_id" id="finalChapterId" value="">
 
     <!-- Left: Main editor -->
     <div class="col-12 col-lg-8">
@@ -133,7 +136,7 @@
           <div class="d-grid">
             <label class="btn btn-outline-primary">
               Upload Attachment
-              <input type="file" class="d-none" name="lesson_notes" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip">
+              <input type="file" class="d-none" name="notes_file" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip">
             </label>
           </div>
           <div class="form-text mt-2">Attach lesson notes for this chapter (single file)</div>
@@ -154,11 +157,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Hidden metadata -->
-    <input type="hidden" name="chapter_id" value="{{ chapter.id if chapter else (chapter_id or '') }}">
-    <input type="hidden" name="type" value="lesson">
-    <input type="hidden" name="order_index" value="{{ lesson.order_index if lesson else (order_index or 0) }}">
   </form>
 </div>
 
@@ -193,7 +191,7 @@ function syncVideoMode() {
   }
 }
 
-// FORM SUBMISSION HANDLER - THIS IS WHERE THE CODE GOES
+// FORM SUBMISSION HANDLER - UPDATED VERSION
 document.addEventListener('DOMContentLoaded', () => {
   // Video mode toggle
   document.querySelectorAll('input[name="video_mode"]').forEach(r => {
@@ -201,36 +199,63 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   syncVideoMode();
 
+  // Chapter selection handling
+  const chapterSelect = document.getElementById('chapterSelect');
+  const newChapterSection = document.getElementById('newChapterSection');
+  const finalChapterId = document.getElementById('finalChapterId');
+  
+  if (chapterSelect && newChapterSection) {
+    chapterSelect.addEventListener('change', function() {
+      if (this.value === 'new') {
+        newChapterSection.classList.remove('d-none');
+        finalChapterId.value = ''; // Clear for new chapter
+      } else {
+        newChapterSection.classList.add('d-none');
+        finalChapterId.value = this.value; // Set selected chapter_id
+      }
+    });
+  }
+
   // Form submission handler
-  document.getElementById('lessonForm').addEventListener('submit', function(e) {
+  document.getElementById('lessonForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    // Get form data
     const formData = new FormData(this);
-    const title = formData.get('title');
-    const content = formData.get('content');
+    const selectedChapter = formData.get('chapter_id');
     
-    // Calculate duration
-    const hours = formData.get('duration_hours') || '0';
-    const minutes = formData.get('duration_minutes') || '0';
-    const seconds = formData.get('duration_seconds') || '0';
-    const duration = `${hours}h ${minutes}m ${seconds}s`.replace('0h ', '').replace('0m ', '').trim();
-    
-    // THIS IS THE CODE THAT SENDS DATA BACK TO UPLOAD.HTML
-    if (window.opener && window.opener.addChapterItem) {
-      window.opener.addChapterItem({
-        id: Date.now(),
-        type: 'lesson',
-        title: title,
-        description: content ? content.substring(0, 100) + (content.length > 100 ? '...' : '') : '',
-        duration: duration,
-        content: content,
-        video_mode: formData.get('video_mode'),
-        is_preview: formData.get('is_preview') === 'on'
-      });
-      window.close(); // Close the popup window
+    // If creating a new chapter, create it via API first
+    if (selectedChapter === 'new') {
+      const newChapterTitle = formData.get('new_chapter_title');
+      
+      if (!newChapterTitle) {
+        alert('Please enter a chapter title');
+        return;
+      }
+      
+      try {
+        // Create new chapter via API
+        const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(formData.get('new_chapter_description') || '')}`
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          // Set the new chapter ID and submit the form
+          document.getElementById('finalChapterId').value = result.chapter_id;
+          this.submit(); // Submit the main form with the new chapter_id
+        } else {
+          alert('Error creating chapter: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error creating chapter: ' + error.message);
+      }
     } else {
-      // Fallback: submit the form normally if no opener
+      // Submit normally for existing chapter
       this.submit();
     }
   });
