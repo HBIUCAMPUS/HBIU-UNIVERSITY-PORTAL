@@ -842,7 +842,8 @@ def upload_resource(unit_id):
                 flash('Error uploading resource', 'danger')
     
     # ✅ Corrected template name
-    return render_template("upload_resource.html", unit=unit)
+    return render_template("upload.html", unit=unit)
+
 # ---------- CURRICULUM JSON APIS (ADD-ONLY) ----------
 
 @app.route('/api/unit/<int:unit_id>/curriculum')
@@ -946,6 +947,126 @@ def api_create_item(unit_id):
 
     return jsonify({'ok': True, 'item_id': item_id})
 
+# ==================== NEW: LESSON, QUIZ, ASSIGNMENT, EXAM ROUTES ====================
+
+@app.route('/unit/<int:unit_id>/add_lesson')
+def add_lesson_page(unit_id):
+    """Page for adding a new lesson"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please login as lecturer or admin', 'warning')
+        return redirect(url_for('login'))
+    
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('lecturer_dashboard'))
+    
+    return render_template('add_lesson.html', unit=unit)
+
+@app.route('/unit/<int:unit_id>/add_quiz')
+def add_quiz_page(unit_id):
+    """Page for adding a new quiz"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please login as lecturer or admin', 'warning')
+        return redirect(url_for('login'))
+    
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('lecturer_dashboard'))
+    
+    return render_template('add_quiz.html', unit=unit)
+
+@app.route('/unit/<int:unit_id>/add_assignment')
+def add_assignment_page(unit_id):
+    """Page for adding a new assignment"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please login as lecturer or admin', 'warning')
+        return redirect(url_for('login'))
+    
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('lecturer_dashboard'))
+    
+    return render_template('add_assignment.html', unit=unit)
+
+@app.route('/unit/<int:unit_id>/add_exam')
+def add_exam_page(unit_id):
+    """Page for adding final exam"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        flash('Please login as lecturer or admin', 'warning')
+        return redirect(url_for('login'))
+    
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found', 'danger')
+        return redirect(url_for('lecturer_dashboard'))
+    
+    # Check if exam already exists
+    existing_exam = db.get_exam_by_unit(unit_id)
+    if existing_exam:
+        flash('Final exam already exists for this unit', 'info')
+        return redirect(url_for('upload_resource', unit_id=unit_id))
+    
+    # Check if there are enough chapters (10 chapters required)
+    chapters = db.get_unit_chapters(unit_id) or []
+    can_create = len(chapters) >= 10
+    
+    return render_template('add_exam.html', unit=unit, can_create=can_create, lesson_count=len(chapters))
+
+# ==================== API ROUTES FOR EXAMS ====================
+
+@app.route('/api/unit/<int:unit_id>/exam', methods=['POST'])
+def api_create_exam(unit_id):
+    """API endpoint to create exam from popup window"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.form if request.form else request.json or {}
+        
+        title = data.get('title', 'Final Examination')
+        instructions = data.get('instructions', '')
+        duration = data.get('duration', '60 minutes')
+        total_marks = data.get('total_marks', '100')
+        questions = data.get('questions', [])
+        
+        # Create exam in database
+        exam_id, exam_item_id = db.create_exam(
+            unit_id=unit_id,
+            title=title,
+            instructions=instructions,
+            duration=duration,
+            total_marks=total_marks,
+            created_by=session['user_id']
+        )
+        
+        if exam_id and questions:
+            db.add_exam_questions(exam_id, questions)
+        
+        return jsonify({
+            'ok': True, 
+            'exam_id': exam_id,
+            'message': 'Exam created successfully'
+        })
+        
+    except Exception as e:
+        print(f"Exam creation error: {e}")
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+@app.route('/api/unit/<int:unit_id>/exams')
+def api_get_exams(unit_id):
+    """API endpoint to get exams for a unit"""
+    exams = []
+    try:
+        exam_data = db.get_exam_by_unit(unit_id)
+        if exam_data:
+            exams.append(exam_data)
+    except Exception as e:
+        print(f"Error fetching exams: {e}")
+    
+    return jsonify({'ok': True, 'exams': exams})
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
@@ -963,6 +1084,7 @@ def student_results():
 @app.route("/test")
 def test():
     return "✅ Flask is working and connected to database!"
+
 # ---------- EXAM: CREATE (lecturer/admin) ----------
 @app.route('/unit/<int:unit_id>/exam/create', methods=['GET','POST'])
 def exam_create(unit_id):
