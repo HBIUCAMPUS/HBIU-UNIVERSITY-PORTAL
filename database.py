@@ -1929,21 +1929,21 @@ def save_exam_attempt_and_score(exam_id:int, student_id:int, answers:dict):
     conn.commit(); conn.close()
     return score, total
     def get_next_chapter_number(unit_id):
-    """Get the next chapter number for a unit"""
-    conn = get_db()
-    cursor = conn.cursor()
-    try:
-        if os.environ.get('DATABASE_URL'):
-            cursor.execute("SELECT COUNT(*) FROM chapters WHERE unit_id = %s", (unit_id,))
-        else:
-            cursor.execute("SELECT COUNT(*) FROM chapters WHERE unit_id = ?", (unit_id,))
-        count = cursor.fetchone()[0]
-        return count + 1
-    except Exception as e:
-        print(f"Error getting chapter count: {e}")
-        return 1
-    finally:
-        conn.close()
+        """Get the next chapter number for a unit"""
+        conn = get_db()
+        cursor = conn.cursor()
+        try:
+            if os.environ.get('DATABASE_URL'):
+                cursor.execute("SELECT COUNT(*) FROM chapters WHERE unit_id = %s", (unit_id,))
+            else:
+                cursor.execute("SELECT COUNT(*) FROM chapters WHERE unit_id = ?", (unit_id,))
+            count = cursor.fetchone()[0]
+            return count + 1
+        except Exception as e:
+            print(f"Error getting chapter count: {e}")
+            return 1
+        finally:
+            conn.close()
 
 def add_chapter(unit_id, title, description='', order_index=None):
     """Add a new chapter to a unit"""
