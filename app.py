@@ -899,13 +899,19 @@ def api_create_item(unit_id):
 
     # Work with form (supports files) or JSON
     data = request.form if request.form else request.json or {}
-    chapter_id = int(data.get('chapter_id', 0))
+    chapter_id = data.get('chapter_id', '')
     item_type = (data.get('type') or '').strip().lower()
     title = (data.get('title') or '').strip()
     description = (data.get('description') or '').strip()
     duration = (data.get('duration') or '').strip()
     video_url = (data.get('video_url') or '').strip()
     instructions = (data.get('instructions') or '').strip()
+
+    # Validate chapter_id - FIXED: Handle empty string case
+    try:
+        chapter_id = int(chapter_id) if chapter_id else 0
+    except (ValueError, TypeError):
+        return jsonify({'ok': False, 'error': 'Invalid chapter_id'}), 400
 
     if not chapter_id or item_type not in ['lesson', 'quiz', 'assignment'] or not title:
         return jsonify({'ok': False, 'error': 'Missing or invalid fields'}), 400
@@ -952,7 +958,6 @@ def api_create_item(unit_id):
         return jsonify({'ok': False, 'error': 'Failed to create item'}), 400
 
     return jsonify({'ok': True, 'item_id': item_id})
-
 # ==================== TEACHER PAGES ====================
 
 @app.route('/unit/<int:unit_id>/add_lesson')
