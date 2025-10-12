@@ -37,8 +37,8 @@
         <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
         <div id="newChapterSection" class="d-none">
           <div class="mb-3">
-            <label class="form-label">New Chapter Title</label>
-            <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
+            <label class="form-label">New Chapter Title <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title" required>
           </div>
           <div class="mb-3">
             <label class="form-label">Chapter Description</label>
@@ -58,6 +58,7 @@
     <!-- Hidden fields for API -->
     <input type="hidden" name="type" value="quiz">
     <input type="hidden" name="chapter_id" id="finalChapterId" value="">
+    <input type="hidden" name="duration" id="durationField" value="">
 
     <!-- Left: Quiz meta & builder -->
     <div class="col-12 col-lg-8">
@@ -65,7 +66,7 @@
         <div class="card-body">
           <!-- Title -->
           <div class="mb-3">
-            <label class="form-label">Name <span class="text-danger">*</span></label>
+            <label class="form-label">Quiz Title <span class="text-danger">*</span></label>
             <input type="text" class="form-control" name="title" placeholder="Enter quiz title"
                    value="{{ item.title if item else '' }}" required>
           </div>
@@ -76,7 +77,7 @@
             <span class="text-muted small">Shown to students before starting</span>
           </div>
           <textarea class="form-control" name="instructions" rows="6"
-            placeholder="Explain rules, materials allowed, etc.">{{ item.instructions if item else '' }}</textarea>
+            placeholder="Explain rules, materials allowed, grading criteria, etc.">{{ item.instructions if item else '' }}</textarea>
 
           <!-- Optional simple question builder (stored as JSON in hidden field) -->
           <hr>
@@ -84,6 +85,7 @@
             <h6 class="mb-0">Questions (optional)</h6>
             <button class="btn btn-sm btn-outline-primary" type="button" onclick="addQ()">+ Add Question</button>
           </div>
+          <div class="form-text mb-2">Add multiple choice questions. The first correct answer will be used for grading.</div>
           <div id="qList" class="mt-2"></div>
           <input type="hidden" name="content" id="qPayload"> {# stores JSON of questions #}
           <div class="form-text mt-1">
@@ -99,32 +101,55 @@
         <div class="card-body">
           <h6 class="card-title mb-3">Quiz Settings</h6>
 
-          <label class="form-label">Time Limit</label>
+          <label class="form-label">Time Limit (minutes)</label>
           <div class="row g-2 mb-3">
-            <div class="col-6">
+            <div class="col-12">
               <input type="number" min="0" class="form-control" name="duration_minutes"
                      placeholder="0" value="{{ item.duration_minutes if item else '' }}">
-              <div class="form-text text-center">minutes</div>
+              <div class="form-text">0 = No time limit</div>
             </div>
-            <div class="col-6">
-              <input type="number" min="0" class="form-control" name="max_attempts" placeholder="1">
-              <div class="form-text text-center">max attempts</div>
+          </div>
+
+          <label class="form-label">Maximum Attempts</label>
+          <div class="row g-2 mb-3">
+            <div class="col-12">
+              <input type="number" min="1" max="10" class="form-control" name="max_attempts" placeholder="1" value="1">
+              <div class="form-text">Number of times students can take this quiz</div>
             </div>
           </div>
 
           <div class="form-check mb-2">
-            <input class="form-check-input" type="checkbox" name="shuffle" id="shuffle">
+            <input class="form-check-input" type="checkbox" name="shuffle" id="shuffle" value="true">
             <label class="form-check-label" for="shuffle">Shuffle questions</label>
           </div>
           <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" name="show_answers" id="show_answers">
+            <input class="form-check-input" type="checkbox" name="show_answers" id="show_answers" value="true">
             <label class="form-check-label" for="show_answers">Show correct answers after submit</label>
           </div>
 
           <hr>
           <h6 class="card-title mb-2">Upload Quiz File</h6>
-          <input class="form-control" type="file" name="attachment" accept=".pdf,.doc,.docx,.csv,.xlsx,.zip">
-          <div class="form-text">Optional. Upload a prepared quiz file or bank.</div>
+          <input class="form-control" type="file" name="attachment" accept=".pdf,.doc,.docx,.csv,.xlsx,.zip,.txt">
+          <div class="form-text">Optional. Upload a prepared quiz file or question bank.</div>
+        </div>
+      </div>
+
+      <!-- Points and Grading -->
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Grading</h6>
+          
+          <div class="mb-3">
+            <label class="form-label">Total Points</label>
+            <input type="number" min="1" class="form-control" name="total_points" placeholder="100" value="100">
+            <div class="form-text">Total points for this quiz</div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Passing Score (%)</label>
+            <input type="number" min="0" max="100" class="form-control" name="passing_score" placeholder="70" value="70">
+            <div class="form-text">Minimum score required to pass</div>
+          </div>
         </div>
       </div>
 
@@ -136,7 +161,7 @@
             <small class="text-muted">Allow preview before enrollment</small>
           </div>
           <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" role="switch" name="is_preview"
+            <input class="form-check-input" type="checkbox" role="switch" name="is_preview" value="true"
                    {% if item and item.is_preview %}checked{% endif %}>
           </div>
         </div>
@@ -145,7 +170,11 @@
   </form>
 </div>
 
-<style>.card-title{font-weight:600} #qList .card{border-left:4px solid #4e73df}</style>
+<style>
+.card-title { font-weight: 600; } 
+#qList .card { border-left: 4px solid #4e73df; }
+.required-field::after { content: " *"; color: #dc3545; }
+</style>
 
 <script>
 const qList = document.getElementById('qList');
@@ -156,47 +185,66 @@ function addQ() {
   qCounter++;
   const id = `q${qCounter}`;
   const card = document.createElement('div');
-  card.className = 'card mb-2';
+  card.className = 'card mb-3';
   card.innerHTML = `
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-2">
         <strong>Question ${qCounter}</strong>
         <button class="btn btn-sm btn-outline-danger" type="button" onclick="this.closest('.card').remove(); syncJSON()">Remove</button>
       </div>
-      <input class="form-control mb-2" name="${id}_text" placeholder="Question text">
+      <div class="mb-2">
+        <label class="form-label small">Question Text</label>
+        <input class="form-control" name="${id}_text" placeholder="Enter your question here..." required>
+      </div>
       <div class="row g-2 mb-2">
-        <div class="col-9"><input class="form-control" name="${id}_opt1" placeholder="Option A"></div>
+        <div class="col-9">
+          <label class="form-label small">Option A</label>
+          <input class="form-control" name="${id}_opt1" placeholder="Option A" required>
+        </div>
         <div class="col-3">
+          <label class="form-label small">Correct?</label>
           <select class="form-select" name="${id}_ans1">
-            <option value="false" selected>Wrong</option>
-            <option value="true">Correct</option>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
           </select>
         </div>
       </div>
       <div class="row g-2 mb-2">
-        <div class="col-9"><input class="form-control" name="${id}_opt2" placeholder="Option B"></div>
+        <div class="col-9">
+          <label class="form-label small">Option B</label>
+          <input class="form-control" name="${id}_opt2" placeholder="Option B" required>
+        </div>
         <div class="col-3">
+          <label class="form-label small">Correct?</label>
           <select class="form-select" name="${id}_ans2">
-            <option value="false" selected>Wrong</option>
-            <option value="true">Correct</option>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
           </select>
         </div>
       </div>
       <div class="row g-2 mb-2">
-        <div class="col-9"><input class="form-control" name="${id}_opt3" placeholder="Option C"></div>
+        <div class="col-9">
+          <label class="form-label small">Option C</label>
+          <input class="form-control" name="${id}_opt3" placeholder="Option C">
+        </div>
         <div class="col-3">
+          <label class="form-label small">Correct?</label>
           <select class="form-select" name="${id}_ans3">
-            <option value="false" selected>Wrong</option>
-            <option value="true">Correct</option>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
           </select>
         </div>
       </div>
       <div class="row g-2">
-        <div class="col-9"><input class="form-control" name="${id}_opt4" placeholder="Option D"></div>
+        <div class="col-9">
+          <label class="form-label small">Option D</label>
+          <input class="form-control" name="${id}_opt4" placeholder="Option D">
+        </div>
         <div class="col-3">
+          <label class="form-label small">Correct?</label>
           <select class="form-select" name="${id}_ans4">
-            <option value="false" selected>Wrong</option>
-            <option value="true">Correct</option>
+            <option value="false">No</option>
+            <option value="true">Yes</option>
           </select>
         </div>
       </div>
@@ -209,20 +257,33 @@ function addQ() {
 function syncJSON() {
   const data = [];
   qList.querySelectorAll('.card').forEach((c, idx) => {
-    const q = {};
-    q.text = c.querySelector(`[name^="q"][name$="_text"]`)?.value || '';
-    q.options = [];
+    const q = {
+      text: c.querySelector(`[name^="q"][name$="_text"]`)?.value || '',
+      options: [],
+      points: 1,
+      type: 'mcq'
+    };
+    
     for (let i=1;i<=4;i++){
-      const opt = c.querySelector(`[name^="q"][name$="_opt${i}"]`)?.value || '';
-      const ans = c.querySelector(`[name^="q"][name$="_ans${i}"]`)?.value === 'true';
-      q.options.push({ text: opt, correct: ans });
+      const optInput = c.querySelector(`[name^="q"][name$="_opt${i}"]`);
+      const opt = optInput?.value || '';
+      // Only add option if it has text
+      if (opt.trim()) {
+        const ans = c.querySelector(`[name^="q"][name$="_ans${i}"]`)?.value === 'true';
+        q.options.push({ text: opt, correct: ans });
+      }
     }
-    data.push(q);
+    
+    // Only add question if it has text and at least 2 options
+    if (q.text.trim() && q.options.length >= 2) {
+      data.push(q);
+    }
   });
   qPayload.value = JSON.stringify(data);
+  console.log('Questions JSON:', qPayload.value);
 }
 
-// FORM SUBMISSION HANDLER - UPDATED VERSION
+// FORM SUBMISSION HANDLER - COMPLETE FIXED VERSION
 document.addEventListener('DOMContentLoaded', () => {
   // Chapter selection handling
   const chapterSelect = document.getElementById('chapterSelect');
@@ -233,57 +294,177 @@ document.addEventListener('DOMContentLoaded', () => {
     chapterSelect.addEventListener('change', function() {
       if (this.value === 'new') {
         newChapterSection.classList.remove('d-none');
+        // Make new chapter title required
+        document.querySelector('input[name="new_chapter_title"]').required = true;
         finalChapterId.value = ''; // Clear for new chapter
       } else {
         newChapterSection.classList.add('d-none');
+        // Remove required from new chapter title
+        document.querySelector('input[name="new_chapter_title"]').required = false;
         finalChapterId.value = this.value; // Set selected chapter_id
       }
     });
+    
+    // Initialize the finalChapterId with the default selected value
+    if (chapterSelect.value && chapterSelect.value !== 'new') {
+      finalChapterId.value = chapterSelect.value;
+    }
   }
 
   // Form submission handler
   document.getElementById('quizForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const formData = new FormData(this);
-    const selectedChapter = formData.get('chapter_id');
+    const selectedChapter = document.getElementById('chapterSelect').value;
+    const finalChapterId = document.getElementById('finalChapterId');
+    const titleInput = document.querySelector('input[name="title"]');
     
-    // If creating a new chapter, create it via API first
+    console.log('=== QUIZ FORM SUBMISSION ===');
+    console.log('Selected chapter:', selectedChapter);
+    console.log('Final chapter ID:', finalChapterId.value);
+    console.log('Quiz title:', titleInput.value);
+    
+    // Validate basic required fields
+    if (!selectedChapter || selectedChapter === '') {
+      alert('Please select a chapter');
+      chapterSelect.focus();
+      return;
+    }
+    
+    if (!titleInput.value.trim()) {
+      alert('Please enter a quiz title');
+      titleInput.focus();
+      return;
+    }
+    
+    // If creating a new chapter, validate and create it first
     if (selectedChapter === 'new') {
-      const newChapterTitle = formData.get('new_chapter_title');
+      const newChapterTitle = document.querySelector('input[name="new_chapter_title"]').value;
       
-      if (!newChapterTitle) {
+      if (!newChapterTitle.trim()) {
         alert('Please enter a chapter title');
+        document.querySelector('input[name="new_chapter_title"]').focus();
         return;
       }
       
       try {
-        // Create new chapter via API
+        console.log('Creating new chapter...');
         const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
           },
-          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(formData.get('new_chapter_description') || '')}`
+          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]').value || '')}`
         });
         
         const result = await response.json();
+        console.log('Chapter creation response:', result);
         
         if (result.ok) {
           // Set the new chapter ID and submit the form
-          document.getElementById('finalChapterId').value = result.chapter_id;
-          this.submit(); // Submit the main form with the new chapter_id
+          finalChapterId.value = result.chapter_id;
+          console.log('New chapter created with ID:', result.chapter_id);
+          
+          // Now submit the main form
+          await submitMainForm();
         } else {
           alert('Error creating chapter: ' + result.error);
         }
       } catch (error) {
+        console.error('Error creating chapter:', error);
         alert('Error creating chapter: ' + error.message);
       }
     } else {
       // Submit normally for existing chapter
-      this.submit();
+      console.log('Submitting with existing chapter ID:', selectedChapter);
+      finalChapterId.value = selectedChapter; // Ensure it's set
+      await submitMainForm();
     }
   });
+
+  // Function to submit the main form and handle response
+  async function submitMainForm() {
+    const form = document.getElementById('quizForm');
+    const formData = new FormData(form);
+    
+    // Set duration from minutes field
+    const durationMinutes = document.querySelector('input[name="duration_minutes"]').value;
+    if (durationMinutes && durationMinutes > 0) {
+      document.getElementById('durationField').value = durationMinutes + ' minutes';
+      formData.set('duration', durationMinutes + ' minutes');
+    }
+    
+    // Log what we're sending
+    console.log('=== SUBMITTING FORM DATA ===');
+    const formDataObj = {};
+    for (let [key, value] of formData.entries()) {
+      formDataObj[key] = value;
+      console.log(`${key}: ${value}`);
+    }
+    console.log('=== END FORM DATA ===');
+    
+    try {
+      // Show loading state
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Creating Quiz...';
+      submitBtn.disabled = true;
+      
+      const response = await fetch(form.action, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      console.log('API Response:', result);
+      
+      // Restore button state
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      
+      if (result.ok) {
+        alert(result.message || 'Quiz created successfully!');
+        // Redirect back to the learning interface
+        setTimeout(() => {
+          window.location.href = result.redirect_url || "{{ url_for('learning_interface', unit_id=unit.id) }}";
+        }, 1000);
+      } else {
+        alert('Error creating quiz: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error submitting form:', error);
+      alert('Error creating quiz: ' + error.message);
+      
+      // Restore button state on error
+      const submitBtn = form.querySelector('button[type="submit"]');
+      submitBtn.textContent = 'Save';
+      submitBtn.disabled = false;
+    }
+  }
+
+  // Add a couple of sample questions on first load for demonstration
+  setTimeout(() => {
+    if (qList.children.length === 0) {
+      console.log('Adding sample questions...');
+      // Add two sample questions
+      addQ();
+      addQ();
+      
+      // Set sample data for first question
+      setTimeout(() => {
+        const firstCard = qList.querySelector('.card');
+        if (firstCard) {
+          firstCard.querySelector('[name="q1_text"]').value = "What is the capital of France?";
+          firstCard.querySelector('[name="q1_opt1"]').value = "London";
+          firstCard.querySelector('[name="q1_opt2"]').value = "Paris";
+          firstCard.querySelector('[name="q1_ans2"]').value = "true";
+          firstCard.querySelector('[name="q1_opt3"]').value = "Berlin";
+          firstCard.querySelector('[name="q1_opt4"]').value = "Madrid";
+          syncJSON();
+        }
+      }, 100);
+    }
+  }, 500);
 });
 </script>
 {% endblock %}
