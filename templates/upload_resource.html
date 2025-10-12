@@ -25,15 +25,82 @@
         </div>
       </div>
 
-      <!-- Curriculum Items -->
-      <div id="curriculumList" class="mb-4">
-        <!-- Filled by JS -->
+      <!-- Current Chapter Items (Temporary) -->
+      <div id="currentChapterItems" class="mb-4" style="display: none;">
+        <div class="card mb-4">
+          <div class="card-header bg-light">
+            <h5 class="mb-0">Current Chapter Items</h5>
+          </div>
+          <div class="card-body">
+            <div id="lessonList" class="mb-3">
+              <h6 class="text-muted">Lessons</h6>
+              <!-- Lessons will be added here -->
+            </div>
+            <div id="quizList" class="mb-3">
+              <h6 class="text-muted">Quizzes</h6>
+              <!-- Quizzes will be added here -->
+            </div>
+            <div id="assignmentList" class="mb-3">
+              <h6 class="text-muted">Assignments</h6>
+              <!-- Assignments will be added here -->
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Add Chapter Button -->
-      <div class="text-center mt-4">
-        <button id="btnAddChapter" class="btn btn-primary btn-sm">
-          + Add Chapter
+      <!-- Add Content Boxes -->
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <div class="card text-center h-100">
+            <div class="card-body">
+              <h5 class="card-title">Lesson</h5>
+              <p class="card-text text-muted small">Add learning materials and content</p>
+              <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#lessonModal">
+                + Add Lesson
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center h-100">
+            <div class="card-body">
+              <h5 class="card-title">Quiz</h5>
+              <p class="card-text text-muted small">Create assessment questions</p>
+              <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#quizModal">
+                + Add Quiz
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card text-center h-100">
+            <div class="card-body">
+              <h5 class="card-title">Assignment</h5>
+              <p class="card-text text-muted small">Create tasks for students</p>
+              <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignmentModal">
+                + Add Assignment
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Save Chapter Button -->
+      <div class="text-center mb-4">
+        <button id="btnSaveChapter" class="btn btn-primary" disabled>
+          Save Chapter
+        </button>
+      </div>
+
+      <!-- Saved Chapters List -->
+      <div id="savedChaptersList" class="mb-4">
+        <!-- Saved chapters will appear here -->
+      </div>
+
+      <!-- Add New Chapter Button -->
+      <div class="text-center">
+        <button id="btnNewChapter" class="btn btn-outline-primary">
+          + Add New Chapter
         </button>
       </div>
     </div>
@@ -43,20 +110,19 @@
 <!-- Lesson Modal -->
 <div class="modal fade" id="lessonModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg">
-    <form class="modal-content" id="lessonForm" enctype="multipart/form-data">
+    <form class="modal-content" id="lessonForm">
       <div class="modal-header">
         <h5 class="modal-title">Add Lesson</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="chapter_id" id="lesson_chapter_id">
         <div class="mb-3">
           <label class="form-label">Title</label>
-          <input name="title" class="form-control" required>
+          <input name="title" class="form-control" required placeholder="Enter lesson title">
         </div>
         <div class="mb-3">
           <label class="form-label">Description / Notes</label>
-          <textarea name="description" class="form-control" rows="4"></textarea>
+          <textarea name="description" class="form-control" rows="4" placeholder="Add lesson description or notes"></textarea>
         </div>
         <div class="row g-3">
           <div class="col-md-6">
@@ -79,7 +145,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-        <button class="btn btn-primary" type="submit">Save Lesson</button>
+        <button class="btn btn-primary" type="submit">Add Lesson</button>
       </div>
     </form>
   </div>
@@ -88,24 +154,23 @@
 <!-- Quiz Modal -->
 <div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form class="modal-content" id="quizForm" enctype="multipart/form-data">
+    <form class="modal-content" id="quizForm">
       <div class="modal-header">
         <h5 class="modal-title">Add Quiz</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="chapter_id" id="quiz_chapter_id">
         <div class="mb-3">
           <label class="form-label">Title</label>
-          <input name="title" class="form-control" required>
+          <input name="title" class="form-control" required placeholder="Enter quiz title">
         </div>
         <div class="mb-3">
           <label class="form-label">Description</label>
-          <textarea name="description" class="form-control" rows="3"></textarea>
+          <textarea name="description" class="form-control" rows="3" placeholder="Add quiz description"></textarea>
         </div>
         <div class="mb-3">
           <label class="form-label">Duration (e.g., 10m)</label>
-          <input name="duration" class="form-control">
+          <input name="duration" class="form-control" placeholder="10m">
         </div>
         <div class="mb-3">
           <label class="form-label">Upload Quiz File (optional)</label>
@@ -114,7 +179,7 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-        <button class="btn btn-primary" type="submit">Save Quiz</button>
+        <button class="btn btn-primary" type="submit">Add Quiz</button>
       </div>
     </form>
   </div>
@@ -123,20 +188,19 @@
 <!-- Assignment Modal -->
 <div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form class="modal-content" id="assignmentForm" enctype="multipart/form-data">
+    <form class="modal-content" id="assignmentForm">
       <div class="modal-header">
         <h5 class="modal-title">Add Assignment</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" name="chapter_id" id="assignment_chapter_id">
         <div class="mb-3">
           <label class="form-label">Title</label>
-          <input name="title" class="form-control" required>
+          <input name="title" class="form-control" required placeholder="Enter assignment title">
         </div>
         <div class="mb-3">
           <label class="form-label">Instructions</label>
-          <textarea name="instructions" class="form-control" rows="4"></textarea>
+          <textarea name="instructions" class="form-control" rows="4" placeholder="Add assignment instructions"></textarea>
         </div>
         <div class="mb-3">
           <label class="form-label">Due/Duration (optional)</label>
@@ -149,90 +213,44 @@
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-        <button class="btn btn-primary" type="submit">Save Assignment</button>
+        <button class="btn btn-primary" type="submit">Add Assignment</button>
       </div>
     </form>
   </div>
 </div>
 
 <style>
-/* Main styling to match the design */
 .card {
   border: none;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 1rem;
+  transition: all 0.3s ease;
 }
 
-.card-title {
-  color: #2c3e50;
-  font-weight: 600;
-  font-size: 1.1rem;
-}
-
-.card-text {
-  color: #7f8c8d;
-  font-size: 0.875rem;
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .chapter-card {
   border-left: 4px solid #4e73df;
-  transition: all 0.3s ease;
 }
 
-.chapter-card:hover {
-  transform: translateX(2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+.item-badge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
-.chapter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1rem;
-}
-
-.chapter-title {
-  color: #2c3e50;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.chapter-description {
-  color: #7f8c8d;
-  font-size: 0.875rem;
-}
-
-.item-card {
+.current-item {
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 6px;
   padding: 0.75rem;
   margin-bottom: 0.5rem;
-}
-
-.item-type {
-  font-weight: 600;
-  color: #4e73df;
-  font-size: 0.875rem;
-  text-transform: capitalize;
-}
-
-.item-title {
-  color: #2c3e50;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
-}
-
-.item-duration {
-  color: #7f8c8d;
-  font-size: 0.8rem;
-}
-
-.btn-group .btn {
-  font-size: 0.8rem;
-  padding: 0.25rem 0.5rem;
-  margin-left: 0.25rem;
 }
 
 .btn-primary {
@@ -245,147 +263,273 @@
   border-color: #2e59d9;
 }
 
-/* Header styling */
-h1 {
-  color: #2c3e50;
-  font-weight: 700;
-}
-
-h2 {
-  color: #2c3e50;
-  font-weight: 600;
-  border-bottom: 2px solid #4e73df;
-  padding-bottom: 0.5rem;
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const unitId = {{ unit.id if unit else 0 }};
-  const curriculumEl = document.getElementById('curriculumList');
+  let currentChapter = {
+    title: `Chapter ${1}`,
+    lessons: [],
+    quizzes: [],
+    assignments: []
+  };
+  let chapterCounter = 1;
 
-  const lessonModal = new bootstrap.Modal(document.getElementById('lessonModal'));
-  const quizModal = new bootstrap.Modal(document.getElementById('quizModal'));
-  const assignmentModal = new bootstrap.Modal(document.getElementById('assignmentModal'));
+  const currentChapterItems = document.getElementById('currentChapterItems');
+  const lessonList = document.getElementById('lessonList');
+  const quizList = document.getElementById('quizList');
+  const assignmentList = document.getElementById('assignmentList');
+  const savedChaptersList = document.getElementById('savedChaptersList');
+  const btnSaveChapter = document.getElementById('btnSaveChapter');
+  const btnNewChapter = document.getElementById('btnNewChapter');
 
-  // Render curriculum
-  async function loadCurriculum() {
-    const res = await fetch(`{{ url_for('api_get_curriculum', unit_id=0) }}`.replace('0', unitId));
-    const json = await res.json();
-    if (!json.ok) return;
-    const chapters = json.chapters || [];
+  // Initialize
+  loadSavedChapters();
 
-    curriculumEl.innerHTML = '';
-    chapters.forEach(ch => {
-      const card = document.createElement('div');
-      card.className = 'card chapter-card';
-      card.innerHTML = `
-        <div class="card-body">
-          <div class="chapter-header">
-            <div>
-              <h6 class="chapter-title">+ ${escapeHtml(ch.title)}</h6>
-              <small class="chapter-description">${escapeHtml(ch.description || '')}</small>
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-outline-primary btn-sm add-lesson" data-ch="${ch.id}">Lesson</button>
-              <button class="btn btn-outline-primary btn-sm add-quiz" data-ch="${ch.id}">Quiz</button>
-              <button class="btn btn-outline-primary btn-sm add-assignment" data-ch="${ch.id}">Assignment</button>
-            </div>
-          </div>
-          <div class="curriculum-items">
-            ${(ch.items || []).map(it => `
-              <div class="item-card">
-                <div class="item-type">${it.type}</div>
-                <div class="item-title">${escapeHtml(it.title)}</div>
-                ${it.duration ? `<div class="item-duration">${escapeHtml(it.duration)}</div>` : ''}
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-      curriculumEl.appendChild(card);
-    });
+  // Lesson Form
+  document.getElementById('lessonForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const lesson = {
+      id: Date.now(),
+      title: formData.get('title'),
+      description: formData.get('description'),
+      video_url: formData.get('video_url'),
+      duration: formData.get('duration'),
+      type: 'lesson'
+    };
+    
+    currentChapter.lessons.push(lesson);
+    addLessonToDisplay(lesson);
+    e.target.reset();
+    bootstrap.Modal.getInstance(document.getElementById('lessonModal')).hide();
+    updateSaveButton();
+  });
 
-    // Hook buttons
-    curriculumEl.querySelectorAll('.add-lesson').forEach(b => b.addEventListener('click', () => {
-      document.getElementById('lesson_chapter_id').value = b.dataset.ch;
-      document.getElementById('lessonForm').reset();
-      lessonModal.show();
-    }));
-    curriculumEl.querySelectorAll('.add-quiz').forEach(b => b.addEventListener('click', () => {
-      document.getElementById('quiz_chapter_id').value = b.dataset.ch;
-      document.getElementById('quizForm').reset();
-      quizModal.show();
-    }));
-    curriculumEl.querySelectorAll('.add-assignment').forEach(b => b.addEventListener('click', () => {
-      document.getElementById('assignment_chapter_id').value = b.dataset.ch;
-      document.getElementById('assignmentForm').reset();
-      assignmentModal.show();
-    }));
-  }
+  // Quiz Form
+  document.getElementById('quizForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const quiz = {
+      id: Date.now(),
+      title: formData.get('title'),
+      description: formData.get('description'),
+      duration: formData.get('duration'),
+      type: 'quiz'
+    };
+    
+    currentChapter.quizzes.push(quiz);
+    addQuizToDisplay(quiz);
+    e.target.reset();
+    bootstrap.Modal.getInstance(document.getElementById('quizModal')).hide();
+    updateSaveButton();
+  });
 
-  // Add chapter
-  document.getElementById('btnAddChapter').addEventListener('click', async () => {
-    const title = prompt('Enter chapter title (leave blank for automatic):', '');
-    const form = new FormData();
-    if (title) form.append('title', title);
-    const res = await fetch(`{{ url_for('api_create_chapter', unit_id=0) }}`.replace('0', unitId), {
-      method: 'POST',
-      body: form
-    });
-    const json = await res.json();
-    if (json.ok) {
-      await loadCurriculum();
-    } else {
-      alert(json.error || 'Failed to add chapter');
+  // Assignment Form
+  document.getElementById('assignmentForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const assignment = {
+      id: Date.now(),
+      title: formData.get('title'),
+      instructions: formData.get('instructions'),
+      duration: formData.get('duration'),
+      type: 'assignment'
+    };
+    
+    currentChapter.assignments.push(assignment);
+    addAssignmentToDisplay(assignment);
+    e.target.reset();
+    bootstrap.Modal.getInstance(document.getElementById('assignmentModal')).hide();
+    updateSaveButton();
+  });
+
+  // Save Chapter
+  btnSaveChapter.addEventListener('click', async () => {
+    if (currentChapter.lessons.length === 0 && currentChapter.quizzes.length === 0 && currentChapter.assignments.length === 0) {
+      alert('Please add at least one lesson, quiz, or assignment before saving the chapter.');
+      return;
+    }
+
+    const chapterTitle = prompt('Enter chapter title:', currentChapter.title) || currentChapter.title;
+    
+    try {
+      // Save chapter to server
+      const formData = new FormData();
+      formData.append('title', chapterTitle);
+      formData.append('lessons', JSON.stringify(currentChapter.lessons));
+      formData.append('quizzes', JSON.stringify(currentChapter.quizzes));
+      formData.append('assignments', JSON.stringify(currentChapter.assignments));
+
+      const res = await fetch(`{{ url_for('api_create_chapter', unit_id=0) }}`.replace('0', unitId), {
+        method: 'POST',
+        body: formData
+      });
+      
+      const json = await res.json();
+      
+      if (json.ok) {
+        // Reset current chapter
+        resetCurrentChapter();
+        // Reload saved chapters
+        await loadSavedChapters();
+        alert('Chapter saved successfully!');
+      } else {
+        alert(json.error || 'Failed to save chapter');
+      }
+    } catch (error) {
+      alert('Error saving chapter: ' + error.message);
     }
   });
 
-  // Submit lesson
-  document.getElementById('lessonForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    fd.append('type', 'lesson');
-    const res = await fetch(`{{ url_for('api_create_item', unit_id=0) }}`.replace('0', unitId), { method:'POST', body: fd });
-    const json = await res.json();
-    if (json.ok) {
-      lessonModal.hide();
-      await loadCurriculum();
-    } else alert(json.error || 'Failed to save lesson');
+  // New Chapter
+  btnNewChapter.addEventListener('click', () => {
+    if (currentChapter.lessons.length > 0 || currentChapter.quizzes.length > 0 || currentChapter.assignments.length > 0) {
+      if (!confirm('You have unsaved items. Start a new chapter anyway?')) {
+        return;
+      }
+    }
+    resetCurrentChapter();
   });
 
-  // Submit quiz
-  document.getElementById('quizForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    fd.append('type', 'quiz');
-    const res = await fetch(`{{ url_for('api_create_item', unit_id=0) }}`.replace('0', unitId), { method:'POST', body: fd });
-    const json = await res.json();
-    if (json.ok) {
-      quizModal.hide();
-      await loadCurriculum();
-    } else alert(json.error || 'Failed to save quiz');
-  });
+  function addLessonToDisplay(lesson) {
+    currentChapterItems.style.display = 'block';
+    const lessonEl = document.createElement('div');
+    lessonEl.className = 'current-item';
+    lessonEl.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <span class="item-badge">Lesson</span>
+          <strong>${escapeHtml(lesson.title)}</strong>
+          ${lesson.duration ? `<small class="text-muted ms-2">${escapeHtml(lesson.duration)}</small>` : ''}
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('lesson', ${lesson.id})">×</button>
+      </div>
+      ${lesson.description ? `<div class="mt-1 small text-muted">${escapeHtml(lesson.description)}</div>` : ''}
+    `;
+    lessonList.appendChild(lessonEl);
+  }
 
-  // Submit assignment
-  document.getElementById('assignmentForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    fd.append('type', 'assignment');
-    const res = await fetch(`{{ url_for('api_create_item', unit_id=0) }}`.replace('0', unitId), { method:'POST', body: fd });
-    const json = await res.json();
-    if (json.ok) {
-      assignmentModal.hide();
-      await loadCurriculum();
-    } else alert(json.error || 'Failed to save assignment');
-  });
+  function addQuizToDisplay(quiz) {
+    currentChapterItems.style.display = 'block';
+    const quizEl = document.createElement('div');
+    quizEl.className = 'current-item';
+    quizEl.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <span class="item-badge">Quiz</span>
+          <strong>${escapeHtml(quiz.title)}</strong>
+          ${quiz.duration ? `<small class="text-muted ms-2">${escapeHtml(quiz.duration)}</small>` : ''}
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('quiz', ${quiz.id})">×</button>
+      </div>
+      ${quiz.description ? `<div class="mt-1 small text-muted">${escapeHtml(quiz.description)}</div>` : ''}
+    `;
+    quizList.appendChild(quizEl);
+  }
+
+  function addAssignmentToDisplay(assignment) {
+    currentChapterItems.style.display = 'block';
+    const assignmentEl = document.createElement('div');
+    assignmentEl.className = 'current-item';
+    assignmentEl.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <span class="item-badge">Assignment</span>
+          <strong>${escapeHtml(assignment.title)}</strong>
+          ${assignment.duration ? `<small class="text-muted ms-2">${escapeHtml(assignment.duration)}</small>` : ''}
+        </div>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('assignment', ${assignment.id})">×</button>
+      </div>
+      ${assignment.instructions ? `<div class="mt-1 small text-muted">${escapeHtml(assignment.instructions)}</div>` : ''}
+    `;
+    assignmentList.appendChild(assignmentEl);
+  }
+
+  function removeItem(type, id) {
+    if (type === 'lesson') {
+      currentChapter.lessons = currentChapter.lessons.filter(l => l.id !== id);
+      lessonList.innerHTML = '<h6 class="text-muted">Lessons</h6>';
+      currentChapter.lessons.forEach(addLessonToDisplay);
+    } else if (type === 'quiz') {
+      currentChapter.quizzes = currentChapter.quizzes.filter(q => q.id !== id);
+      quizList.innerHTML = '<h6 class="text-muted">Quizzes</h6>';
+      currentChapter.quizzes.forEach(addQuizToDisplay);
+    } else if (type === 'assignment') {
+      currentChapter.assignments = currentChapter.assignments.filter(a => a.id !== id);
+      assignmentList.innerHTML = '<h6 class="text-muted">Assignments</h6>';
+      currentChapter.assignments.forEach(addAssignmentToDisplay);
+    }
+    
+    updateSaveButton();
+  }
+
+  function updateSaveButton() {
+    const hasItems = currentChapter.lessons.length > 0 || currentChapter.quizzes.length > 0 || currentChapter.assignments.length > 0;
+    btnSaveChapter.disabled = !hasItems;
+  }
+
+  function resetCurrentChapter() {
+    chapterCounter++;
+    currentChapter = {
+      title: `Chapter ${chapterCounter}`,
+      lessons: [],
+      quizzes: [],
+      assignments: []
+    };
+    
+    lessonList.innerHTML = '<h6 class="text-muted">Lessons</h6>';
+    quizList.innerHTML = '<h6 class="text-muted">Quizzes</h6>';
+    assignmentList.innerHTML = '<h6 class="text-muted">Assignments</h6>';
+    currentChapterItems.style.display = 'none';
+    btnSaveChapter.disabled = true;
+  }
+
+  async function loadSavedChapters() {
+    try {
+      const res = await fetch(`{{ url_for('api_get_curriculum', unit_id=0) }}`.replace('0', unitId));
+      const json = await res.json();
+      
+      if (json.ok) {
+        const chapters = json.chapters || [];
+        savedChaptersList.innerHTML = '';
+        
+        chapters.forEach(chapter => {
+          const chapterEl = document.createElement('div');
+          chapterEl.className = 'card chapter-card mb-3';
+          chapterEl.innerHTML = `
+            <div class="card-body">
+              <h5 class="card-title">+ ${escapeHtml(chapter.title)}</h5>
+              <div class="mt-2">
+                ${(chapter.items || []).map(item => `
+                  <div class="current-item mb-2">
+                    <span class="item-badge">${item.type}</span>
+                    <strong>${escapeHtml(item.title)}</strong>
+                    ${item.duration ? `<small class="text-muted ms-2">${escapeHtml(item.duration)}</small>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+          savedChaptersList.appendChild(chapterEl);
+        });
+      }
+    } catch (error) {
+      console.error('Error loading saved chapters:', error);
+    }
+  }
 
   function escapeHtml(s) {
     return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
 
-  // Initial load
-  loadCurriculum();
+  // Make removeItem function available globally
+  window.removeItem = removeItem;
 });
 </script>
 {% endblock %}
