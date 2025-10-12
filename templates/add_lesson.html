@@ -54,6 +54,8 @@
       action="{{ url_for('create_chapter_item', unit_id=unit.id) }}"
       enctype="multipart/form-data"
       class="row g-3">
+    <!-- For lesson form -->
+<input type="hidden" name="type" value="lesson">
 
     <!-- Left: Main editor -->
     <div class="col-12 col-lg-8">
