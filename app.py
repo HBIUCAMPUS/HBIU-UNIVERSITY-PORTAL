@@ -720,6 +720,7 @@ def learning_interface(unit_id):
 
     total_items = 0
     completed_items = 0
+    completed_chapters = 0  # NEW: Add this variable
     has_exam_item = False
 
     # Attach items and compute progress (non-exam only)
@@ -727,6 +728,9 @@ def learning_interface(unit_id):
         items = db.get_chapter_items(ch['id']) or []
         items.sort(key=lambda i: i.get('order_index', 0))
 
+        # NEW: Track chapter completion
+        chapter_completed = True
+        
         for it in items:
             it['completed'] = bool(progress_data.get(it['id'], False))
             if it.get('type') == 'exam':
@@ -735,6 +739,12 @@ def learning_interface(unit_id):
                 total_items += 1
                 if it['completed']:
                     completed_items += 1
+                else:
+                    chapter_completed = False  # If any item not completed, chapter not completed
+
+        # NEW: Count completed chapters
+        if chapter_completed and len(items) > 0:  # Only count if chapter has items and all are completed
+            completed_chapters += 1
 
         ch['items'] = items
 
@@ -764,10 +774,10 @@ def learning_interface(unit_id):
         progress_data=progress_data,
         total_items=total_items,
         completed_items=completed_items,
+        completed_chapters=completed_chapters,  # NEW: Add this to template context
         progress_percentage=progress_percentage,
         exam_unlocked=exam_unlocked
     )
-
 
 @app.route('/update_progress', methods=['POST'])
 def update_progress():
