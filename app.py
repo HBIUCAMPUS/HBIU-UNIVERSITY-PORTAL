@@ -1084,6 +1084,55 @@ def student_results():
 @app.route("/test")
 def test():
     return "✅ Flask is working and connected to database!"
+@app.route('/unit/<int:unit_id>/chapter/create', methods=['POST'])
+def create_chapter(unit_id):
+    """Create a new chapter for a unit"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        data = request.form
+        title = data.get('title', f'Chapter {db.get_next_chapter_number(unit_id)}')
+        description = data.get('description', '')
+        
+        chapter_id = db.add_chapter(unit_id, title, description)
+        if chapter_id:
+            return jsonify({'ok': True, 'chapter_id': chapter_id})
+        return jsonify({'ok': False, 'error': 'Failed to create chapter'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+@app.route('/unit/<int:unit_id>/item/create', methods=['POST'])
+def create_chapter_item(unit_id):
+    """Create a lesson, quiz, or assignment item"""
+    if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
+        return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
+    
+    try:
+        chapter_id = request.form.get('chapter_id')
+        item_type = request.form.get('type')  # lesson, quiz, assignment
+        title = request.form.get('title')
+        content = request.form.get('content', '')
+        
+        if not all([chapter_id, item_type, title]):
+            return jsonify({'ok': False, 'error': 'Missing required fields'})
+        
+        item_id = db.add_chapter_item(
+            chapter_id=chapter_id,
+            title=title,
+            type=item_type,
+            content=content,
+            video_url=request.form.get('video_url'),
+            video_file=request.form.get('video_file'),
+            instructions=request.form.get('instructions'),
+            duration=request.form.get('duration')
+        )
+        
+        if item_id:
+            return jsonify({'ok': True, 'item_id': item_id})
+        return jsonify({'ok': False, 'error': 'Failed to create item'})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
 
 # ---------- EXAM: CREATE (lecturer/admin) ----------
 @app.route('/unit/<int:unit_id>/exam/create', methods=['GET','POST'])
