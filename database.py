@@ -1944,8 +1944,7 @@ def save_exam_attempt_and_score(exam_id:int, student_id:int, answers:dict):
             return 1
         finally:
             conn.close()
-
-def add_chapter(unit_id, title, description='', order_index=None):
+def add_chapter_item(chapter_id, title, type, content='', video_url='', video_file='', instructions='', duration='', notes_file=None, assignment_file=None, order_index=None):
     """Add a new chapter to a unit"""
     conn = get_db()
     cursor = conn.cursor()
