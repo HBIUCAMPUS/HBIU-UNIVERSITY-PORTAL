@@ -55,9 +55,9 @@
             <div class="card-body">
               <h5 class="card-title">Lesson</h5>
               <p class="card-text text-muted small">Add learning materials and content</p>
-              <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#lessonModal">
+              <a href="{{ url_for('add_lesson') }}" class="btn btn-outline-primary btn-sm">
                 + Add Lesson
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -66,9 +66,9 @@
             <div class="card-body">
               <h5 class="card-title">Quiz</h5>
               <p class="card-text text-muted small">Create assessment questions</p>
-              <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#quizModal">
+              <a href="{{ url_for('add_quiz') }}" class="btn btn-outline-primary btn-sm">
                 + Add Quiz
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -77,9 +77,9 @@
             <div class="card-body">
               <h5 class="card-title">Assignment</h5>
               <p class="card-text text-muted small">Create tasks for students</p>
-              <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#assignmentModal">
+              <a href="{{ url_for('add_assignment') }}" class="btn btn-outline-primary btn-sm">
                 + Add Assignment
-              </button>
+              </a>
             </div>
           </div>
         </div>
@@ -98,124 +98,25 @@
       </div>
 
       <!-- Add New Chapter Button -->
-      <div class="text-center">
+      <div class="text-center mb-4">
         <button id="btnNewChapter" class="btn btn-outline-primary">
           + Add New Chapter
         </button>
       </div>
+
+      <!-- Final Exam Section (Shows after 10 chapters) -->
+      <div id="finalExamSection" class="text-center" style="display: none;">
+        <div class="card border-success">
+          <div class="card-body">
+            <h5 class="card-title text-success">Final Exam</h5>
+            <p class="card-text text-muted">You can now upload the final exam for this course</p>
+            <a href="{{ url_for('add_exam') }}" class="btn btn-success">
+              + Upload Final Exam
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-
-<!-- Lesson Modal -->
-<div class="modal fade" id="lessonModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <form class="modal-content" id="lessonForm">
-      <div class="modal-header">
-        <h5 class="modal-title">Add Lesson</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Title</label>
-          <input name="title" class="form-control" required placeholder="Enter lesson title">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Description / Notes</label>
-          <textarea name="description" class="form-control" rows="4" placeholder="Add lesson description or notes"></textarea>
-        </div>
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">YouTube URL (optional)</label>
-            <input name="video_url" class="form-control" placeholder="https://youtube.com/...">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Upload Video (optional)</label>
-            <input type="file" name="video_file" class="form-control" accept="video/*">
-          </div>
-        </div>
-        <div class="mt-3">
-          <label class="form-label">Upload Lesson Notes (PDF/Doc, optional)</label>
-          <input type="file" name="notes_file" class="form-control" accept=".pdf,.doc,.docx,.ppt,.pptx">
-        </div>
-        <div class="mt-3">
-          <label class="form-label">Estimated Duration (e.g., 15m)</label>
-          <input name="duration" class="form-control" placeholder="15m">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-        <button class="btn btn-primary" type="submit">Add Lesson</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Quiz Modal -->
-<div class="modal fade" id="quizModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form class="modal-content" id="quizForm">
-      <div class="modal-header">
-        <h5 class="modal-title">Add Quiz</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Title</label>
-          <input name="title" class="form-control" required placeholder="Enter quiz title">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Description</label>
-          <textarea name="description" class="form-control" rows="3" placeholder="Add quiz description"></textarea>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Duration (e.g., 10m)</label>
-          <input name="duration" class="form-control" placeholder="10m">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Upload Quiz File (optional)</label>
-          <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-        <button class="btn btn-primary" type="submit">Add Quiz</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- Assignment Modal -->
-<div class="modal fade" id="assignmentModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form class="modal-content" id="assignmentForm">
-      <div class="modal-header">
-        <h5 class="modal-title">Add Assignment</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Title</label>
-          <input name="title" class="form-control" required placeholder="Enter assignment title">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Instructions</label>
-          <textarea name="instructions" class="form-control" rows="4" placeholder="Add assignment instructions"></textarea>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Due/Duration (optional)</label>
-          <input name="duration" class="form-control" placeholder="e.g., Due week 3">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Upload Attachment (optional)</label>
-          <input type="file" name="attachment" class="form-control" accept=".pdf,.doc,.docx,.zip">
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Cancel</button>
-        <button class="btn btn-primary" type="submit">Add Assignment</button>
-      </div>
-    </form>
   </div>
 </div>
 
@@ -263,9 +164,23 @@
   border-color: #2e59d9;
 }
 
+.btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.border-success {
+  border: 2px solid #28a745 !important;
 }
 </style>
 
@@ -287,67 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const savedChaptersList = document.getElementById('savedChaptersList');
   const btnSaveChapter = document.getElementById('btnSaveChapter');
   const btnNewChapter = document.getElementById('btnNewChapter');
+  const finalExamSection = document.getElementById('finalExamSection');
 
   // Initialize
   loadSavedChapters();
-
-  // Lesson Form
-  document.getElementById('lessonForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const lesson = {
-      id: Date.now(),
-      title: formData.get('title'),
-      description: formData.get('description'),
-      video_url: formData.get('video_url'),
-      duration: formData.get('duration'),
-      type: 'lesson'
-    };
-    
-    currentChapter.lessons.push(lesson);
-    addLessonToDisplay(lesson);
-    e.target.reset();
-    bootstrap.Modal.getInstance(document.getElementById('lessonModal')).hide();
-    updateSaveButton();
-  });
-
-  // Quiz Form
-  document.getElementById('quizForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const quiz = {
-      id: Date.now(),
-      title: formData.get('title'),
-      description: formData.get('description'),
-      duration: formData.get('duration'),
-      type: 'quiz'
-    };
-    
-    currentChapter.quizzes.push(quiz);
-    addQuizToDisplay(quiz);
-    e.target.reset();
-    bootstrap.Modal.getInstance(document.getElementById('quizModal')).hide();
-    updateSaveButton();
-  });
-
-  // Assignment Form
-  document.getElementById('assignmentForm').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const assignment = {
-      id: Date.now(),
-      title: formData.get('title'),
-      instructions: formData.get('instructions'),
-      duration: formData.get('duration'),
-      type: 'assignment'
-    };
-    
-    currentChapter.assignments.push(assignment);
-    addAssignmentToDisplay(assignment);
-    e.target.reset();
-    bootstrap.Modal.getInstance(document.getElementById('assignmentModal')).hide();
-    updateSaveButton();
-  });
 
   // Save Chapter
   btnSaveChapter.addEventListener('click', async () => {
@@ -379,6 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reload saved chapters
         await loadSavedChapters();
         alert('Chapter saved successfully!');
+        
+        // Check if we should show final exam section (after 10 chapters)
+        checkFinalExamEligibility();
       } else {
         alert(json.error || 'Failed to save chapter');
       }
@@ -396,6 +257,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     resetCurrentChapter();
   });
+
+  // Function to add item from external pages (call this from your other HTML pages)
+  window.addChapterItem = function(item) {
+    if (item.type === 'lesson') {
+      currentChapter.lessons.push(item);
+      addLessonToDisplay(item);
+    } else if (item.type === 'quiz') {
+      currentChapter.quizzes.push(item);
+      addQuizToDisplay(item);
+    } else if (item.type === 'assignment') {
+      currentChapter.assignments.push(item);
+      addAssignmentToDisplay(item);
+    }
+    updateSaveButton();
+  };
 
   function addLessonToDisplay(lesson) {
     currentChapterItems.style.display = 'block';
@@ -518,9 +394,25 @@ document.addEventListener('DOMContentLoaded', () => {
           `;
           savedChaptersList.appendChild(chapterEl);
         });
+
+        // Check final exam eligibility after loading chapters
+        checkFinalExamEligibility(chapters.length);
       }
     } catch (error) {
       console.error('Error loading saved chapters:', error);
+    }
+  }
+
+  function checkFinalExamEligibility(chapterCount = null) {
+    // Count saved chapters or use provided count
+    const savedChapters = document.querySelectorAll('#savedChaptersList .chapter-card');
+    const totalChapters = chapterCount !== null ? chapterCount : savedChapters.length;
+    
+    // Show final exam section after 10 chapters
+    if (totalChapters >= 10) {
+      finalExamSection.style.display = 'block';
+    } else {
+      finalExamSection.style.display = 'none';
     }
   }
 
