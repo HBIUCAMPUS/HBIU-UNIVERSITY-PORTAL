@@ -18,44 +18,46 @@
       <button class="btn btn-primary" form="quizForm" type="submit">Save</button>
     </div>
   </div>
+  
   <!-- Chapter Selection -->
-<div class="col-12">
+  <div class="col-12">
     <div class="card mb-3">
-        <div class="card-body">
-            <div class="mb-3">
-                <label class="form-label">Select Chapter <span class="text-danger">*</span></label>
-                <select class="form-select" name="chapter_id" required>
-                    <option value="">-- Select a Chapter --</option>
-                    {% for chapter in chapters %}
-                    <option value="{{ chapter.id }}">{{ chapter.title }}</option>
-                    {% endfor %}
-                    <option value="new">+ Create New Chapter</option>
-                </select>
-            </div>
-            
-            <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
-            <div id="newChapterSection" class="d-none">
-                <div class="mb-3">
-                    <label class="form-label">New Chapter Title</label>
-                    <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Chapter Description</label>
-                    <textarea class="form-control" name="new_chapter_description" rows="2" placeholder="Optional chapter description"></textarea>
-                </div>
-            </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Select Chapter <span class="text-danger">*</span></label>
+          <select class="form-select" id="chapterSelect" name="chapter_id" required>
+            <option value="">-- Select a Chapter --</option>
+            {% for chapter in chapters %}
+            <option value="{{ chapter.id }}">{{ chapter.title }}</option>
+            {% endfor %}
+            <option value="new">+ Create New Chapter</option>
+          </select>
         </div>
+        
+        <!-- New Chapter Input (shown when "Create New Chapter" is selected) -->
+        <div id="newChapterSection" class="d-none">
+          <div class="mb-3">
+            <label class="form-label">New Chapter Title</label>
+            <input type="text" class="form-control" name="new_chapter_title" placeholder="Enter chapter title">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Chapter Description</label>
+            <textarea class="form-control" name="new_chapter_description" rows="2" placeholder="Optional chapter description"></textarea>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
+  </div>
 
   <form id="quizForm"
       method="POST"
-      action="{{ url_for('create_chapter_item', unit_id=unit.id) }}"
+      action="{{ url_for('api_create_item', unit_id=unit.id) }}"
       enctype="multipart/form-data"
       class="row g-3">
 
-<!-- For quiz form -->
-<input type="hidden" name="type" value="quiz">
+    <!-- Hidden fields for API -->
+    <input type="hidden" name="type" value="quiz">
+    <input type="hidden" name="chapter_id" id="finalChapterId" value="">
 
     <!-- Left: Quiz meta & builder -->
     <div class="col-12 col-lg-8">
@@ -121,7 +123,7 @@
 
           <hr>
           <h6 class="card-title mb-2">Upload Quiz File</h6>
-          <input class="form-control" type="file" name="quiz_file" accept=".pdf,.doc,.docx,.csv,.xlsx,.zip">
+          <input class="form-control" type="file" name="attachment" accept=".pdf,.doc,.docx,.csv,.xlsx,.zip">
           <div class="form-text">Optional. Upload a prepared quiz file or bank.</div>
         </div>
       </div>
@@ -140,11 +142,6 @@
         </div>
       </div>
     </div>
-
-    <!-- Hidden metadata -->
-    <input type="hidden" name="chapter_id" value="{{ chapter.id if chapter else (chapter_id or '') }}">
-    <input type="hidden" name="type" value="quiz">
-    <input type="hidden" name="order_index" value="{{ item.order_index if item else (order_index or 0) }}">
   </form>
 </div>
 
@@ -225,44 +222,65 @@ function syncJSON() {
   qPayload.value = JSON.stringify(data);
 }
 
-// FORM SUBMISSION HANDLER - ADDED CODE
+// FORM SUBMISSION HANDLER - UPDATED VERSION
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('quizForm').addEventListener('submit', function(e) {
+  // Chapter selection handling
+  const chapterSelect = document.getElementById('chapterSelect');
+  const newChapterSection = document.getElementById('newChapterSection');
+  const finalChapterId = document.getElementById('finalChapterId');
+  
+  if (chapterSelect && newChapterSection) {
+    chapterSelect.addEventListener('change', function() {
+      if (this.value === 'new') {
+        newChapterSection.classList.remove('d-none');
+        finalChapterId.value = ''; // Clear for new chapter
+      } else {
+        newChapterSection.classList.add('d-none');
+        finalChapterId.value = this.value; // Set selected chapter_id
+      }
+    });
+  }
+
+  // Form submission handler
+  document.getElementById('quizForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    // Get form data
     const formData = new FormData(this);
-    const title = formData.get('title');
-    const instructions = formData.get('instructions');
-    const durationMinutes = formData.get('duration_minutes');
-    const maxAttempts = formData.get('max_attempts');
+    const selectedChapter = formData.get('chapter_id');
     
-    // Calculate duration for display
-    const duration = durationMinutes ? `${durationMinutes}m` : '';
-    
-    // Get questions data
-    const questions = JSON.parse(qPayload.value || '[]');
-    const questionCount = questions.length;
-    
-    // THIS IS THE CODE THAT SENDS DATA BACK TO UPLOAD.HTML
-    if (window.opener && window.opener.addChapterItem) {
-      window.opener.addChapterItem({
-        id: Date.now(),
-        type: 'quiz',
-        title: title,
-        description: instructions ? instructions.substring(0, 100) + (instructions.length > 100 ? '...' : '') : '',
-        duration: duration,
-        instructions: instructions,
-        question_count: questionCount,
-        max_attempts: maxAttempts || '1',
-        shuffle: formData.get('shuffle') === 'on',
-        show_answers: formData.get('show_answers') === 'on',
-        is_preview: formData.get('is_preview') === 'on',
-        questions: questions
-      });
-      window.close(); // Close the popup window
+    // If creating a new chapter, create it via API first
+    if (selectedChapter === 'new') {
+      const newChapterTitle = formData.get('new_chapter_title');
+      
+      if (!newChapterTitle) {
+        alert('Please enter a chapter title');
+        return;
+      }
+      
+      try {
+        // Create new chapter via API
+        const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(formData.get('new_chapter_description') || '')}`
+        });
+        
+        const result = await response.json();
+        
+        if (result.ok) {
+          // Set the new chapter ID and submit the form
+          document.getElementById('finalChapterId').value = result.chapter_id;
+          this.submit(); // Submit the main form with the new chapter_id
+        } else {
+          alert('Error creating chapter: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error creating chapter: ' + error.message);
+      }
     } else {
-      // Fallback: submit the form normally if no opener
+      // Submit normally for existing chapter
       this.submit();
     }
   });
