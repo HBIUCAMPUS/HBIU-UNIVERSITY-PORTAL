@@ -20,10 +20,10 @@
   </div>
 
   <form id="assignmentForm"
-        method="POST"
-        action="{{ form_action or url_for('add_assignment', chapter_id=chapter.id) if chapter else (form_action or '#') }}"
-        enctype="multipart/form-data"
-        class="row g-3">
+      method="POST"
+      action="{{ url_for('create_chapter_item', unit_id=unit.id) }}"
+      enctype="multipart/form-data"
+      class="row g-3">
 
     <!-- Left: details -->
     <div class="col-12 col-lg-8">
