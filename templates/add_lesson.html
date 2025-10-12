@@ -149,7 +149,7 @@ function insertStarter() {
   if (!area) return;
   const snippet = "Start Trauma Course";
   if (!area.value.includes(snippet)) {
-    area.value = (area.value ? area.value + "\\n\\n" : "") + snippet;
+    area.value = (area.value ? area.value + "\n\n" : "") + snippet;
   }
   area.focus();
 }
@@ -167,11 +167,48 @@ function syncVideoMode() {
     urlWrap.classList.remove('d-none');
   }
 }
+
+// FORM SUBMISSION HANDLER - THIS IS WHERE THE CODE GOES
 document.addEventListener('DOMContentLoaded', () => {
+  // Video mode toggle
   document.querySelectorAll('input[name="video_mode"]').forEach(r => {
     r.addEventListener('change', syncVideoMode);
   });
   syncVideoMode();
+
+  // Form submission handler
+  document.getElementById('lessonForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Get form data
+    const formData = new FormData(this);
+    const title = formData.get('title');
+    const content = formData.get('content');
+    
+    // Calculate duration
+    const hours = formData.get('duration_hours') || '0';
+    const minutes = formData.get('duration_minutes') || '0';
+    const seconds = formData.get('duration_seconds') || '0';
+    const duration = `${hours}h ${minutes}m ${seconds}s`.replace('0h ', '').replace('0m ', '').trim();
+    
+    // THIS IS THE CODE THAT SENDS DATA BACK TO UPLOAD.HTML
+    if (window.opener && window.opener.addChapterItem) {
+      window.opener.addChapterItem({
+        id: Date.now(),
+        type: 'lesson',
+        title: title,
+        description: content ? content.substring(0, 100) + (content.length > 100 ? '...' : '') : '',
+        duration: duration,
+        content: content,
+        video_mode: formData.get('video_mode'),
+        is_preview: formData.get('is_preview') === 'on'
+      });
+      window.close(); // Close the popup window
+    } else {
+      // Fallback: submit the form normally if no opener
+      this.submit();
+    }
+  });
 });
 </script>
 {% endblock %}
