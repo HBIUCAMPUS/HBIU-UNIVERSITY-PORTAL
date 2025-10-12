@@ -842,7 +842,7 @@ def upload_resource(unit_id):
                 flash('Error uploading resource', 'danger')
     
     # ✅ Corrected template name
-    return render_template("upload.html", unit=unit)
+    return render_template("upload_resource.html", unit=unit)
 
 # ---------- CURRICULUM JSON APIS (ADD-ONLY) ----------
 
