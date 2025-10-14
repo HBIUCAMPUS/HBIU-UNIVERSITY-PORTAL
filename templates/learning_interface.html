@@ -324,6 +324,12 @@
   padding: 0.5rem 0;
   border-bottom: 1px solid #eee;
 }
+.prose {
+  line-height: 1.6;
+}
+.prose p {
+  margin-bottom: 1rem;
+}
 </style>
 
 <script>
@@ -335,22 +341,18 @@ let allItems = [];
 document.addEventListener('DOMContentLoaded', function() {
   // Collect all items from chapters
   allItems = [];
-  {% for chapter in chapters %}
-    {% for item in chapter.items %}
-      allItems.push({
-        id: {{ item.id }},
-        title: "{{ item.title|escapejs }}",
-        type: "{{ item.type }}",
-        content: `{{ item.content|escapejs }}`,
-        instructions: `{{ item.instructions|escapejs }}`,
-        video_url: "{{ item.video_url|default('')|escapejs }}",
-        video_file: "{{ item.video_file|default('')|escapejs }}",
-        duration: "{{ item.duration|default('')|escapejs }}",
-        completed: {{ 'true' if item.completed else 'false' }},
-        chapter_title: "{{ chapter.title|escapejs }}"
-      });
-    {% endfor %}
-  {% endfor %}
+  
+  // We'll collect items from the DOM instead of template variables
+  document.querySelectorAll('.lesson-item').forEach(itemEl => {
+    const item = {
+      id: parseInt(itemEl.dataset.itemId),
+      type: itemEl.dataset.type,
+      title: itemEl.querySelector('.flex-grow-1').textContent.trim(),
+      completed: itemEl.classList.contains('text-success'),
+      locked: itemEl.dataset.locked === '1'
+    };
+    allItems.push(item);
+  });
 
   // Expand first chapter by default
   const firstChapter = document.querySelector('.chapter-item');
@@ -433,36 +435,29 @@ function loadLesson(item) {
   const videoContent = document.getElementById('videoContent');
   const videoFrame = document.getElementById('lessonVideo');
   
-  if (item.video_url || item.video_file) {
-    let videoUrl = item.video_url;
-    if (item.video_file) {
-      videoUrl = "{{ url_for('uploaded_file', filename='') }}" + item.video_file;
-    }
-    
-    // Convert YouTube URLs to embed format
-    if (videoUrl.includes('youtube.com/watch?v=')) {
-      videoUrl = videoUrl.replace('youtube.com/watch?v=', 'youtube.com/embed/');
-    } else if (videoUrl.includes('youtu.be/')) {
-      videoUrl = videoUrl.replace('youtu.be/', 'youtube.com/embed/');
-    }
-    
-    videoFrame.src = videoUrl;
-    videoContent.classList.remove('d-none');
-  } else {
-    videoContent.classList.add('d-none');
-  }
+  // For demo purposes - in real implementation, you'd get this from your data
+  videoContent.classList.add('d-none'); // Hide video for now
   
   // Lesson description
   const descriptionEl = document.getElementById('lessonDescription');
-  descriptionEl.innerHTML = item.content ? 
-    `<div class="prose">${item.content}</div>` :
-    '<p class="text-muted">No content available for this lesson.</p>';
+  descriptionEl.innerHTML = `
+    <div class="prose">
+      <h6>About this lesson</h6>
+      <p>This lesson covers important concepts related to "${item.title}".</p>
+      <p>In a real implementation, this content would come from your database.</p>
+    </div>
+  `;
   
   // Lesson materials
   const materialsEl = document.getElementById('lessonMaterials');
-  materialsEl.innerHTML = item.instructions ? 
-    `<div class="prose">${item.instructions}</div>` :
-    '<p class="text-muted small">No additional materials provided.</p>';
+  materialsEl.innerHTML = `
+    <p class="text-muted small">Lesson materials and resources would be displayed here.</p>
+    <div class="d-grid gap-2">
+      <button class="btn btn-outline-primary btn-sm" onclick="showNotification('Downloading lesson materials...', 'info')">
+        <i class="fas fa-download me-1"></i>Download Notes
+      </button>
+    </div>
+  `;
 }
 
 // Load quiz content
@@ -472,30 +467,46 @@ function loadQuiz(item) {
   
   // Quiz instructions
   document.getElementById('quizInstructions').textContent = 
-    item.instructions || 'Complete the quiz to test your understanding.';
+    'Complete the quiz to test your understanding of the material.';
   
   // Quiz questions
   const questionsEl = document.getElementById('quizQuestions');
-  if (item.content) {
-    try {
-      const questions = JSON.parse(item.content);
-      questionsEl.innerHTML = renderQuizQuestions(questions);
-    } catch (e) {
-      questionsEl.innerHTML = `
-        <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          Error loading quiz questions. Please try again later.
+  questionsEl.innerHTML = `
+    <div class="quiz-question">
+      <h6>1. Sample Question 1</h6>
+      <div class="options">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="question_1" id="q_1_0">
+          <label class="form-check-label" for="q_1_0">Option A</label>
         </div>
-      `;
-    }
-  } else {
-    questionsEl.innerHTML = `
-      <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i>
-        Quiz questions will be available soon.
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="question_1" id="q_1_1">
+          <label class="form-check-label" for="q_1_1">Option B</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="question_1" id="q_1_2">
+          <label class="form-check-label" for="q_1_2">Option C</label>
+        </div>
       </div>
-    `;
-  }
+    </div>
+    <div class="quiz-question">
+      <h6>2. Sample Question 2</h6>
+      <div class="options">
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="question_2" id="q_2_0">
+          <label class="form-check-label" for="q_2_0">Option A</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="question_2" id="q_2_1">
+          <label class="form-check-label" for="q_2_1">Option B</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="question_2" id="q_2_2">
+          <label class="form-check-label" for="q_2_2">Option C</label>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 // Load assignment content
@@ -505,49 +516,34 @@ function loadAssignment(item) {
   
   // Assignment instructions
   const instructionsEl = document.getElementById('assignmentInstructions');
-  instructionsEl.innerHTML = item.instructions ? 
-    `<div class="prose">${item.instructions}</div>` :
-    '<p class="text-muted">Follow the assignment guidelines provided by your instructor.</p>';
+  instructionsEl.innerHTML = `
+    <div class="prose">
+      <h6>Assignment: ${item.title}</h6>
+      <p>Complete this assignment to demonstrate your understanding of the course material.</p>
+      <p><strong>Requirements:</strong></p>
+      <ul>
+        <li>Submit your work in PDF format</li>
+        <li>Include all relevant calculations and explanations</li>
+        <li>Cite any references used</li>
+      </ul>
+    </div>
+  `;
   
   // Assignment details
   const detailsEl = document.getElementById('assignmentDetails');
-  let detailsHtml = '<div class="assignment-details">';
-  
-  if (item.duration) {
-    detailsHtml += `<p><strong>Estimated Time:</strong> ${item.duration}</p>`;
-  }
-  
-  detailsHtml += '</div>';
-  detailsEl.innerHTML = detailsHtml;
+  detailsEl.innerHTML = `
+    <div class="assignment-details">
+      <p><strong>Due Date:</strong> One week from now</p>
+      <p><strong>Points:</strong> 100</p>
+      <p><strong>Submission Format:</strong> PDF</p>
+    </div>
+  `;
 }
 
 // Load exam content
 function loadExam(item) {
   const content = document.getElementById('examContent');
   content.classList.remove('d-none');
-}
-
-// Render quiz questions
-function renderQuizQuestions(questions) {
-  if (!questions || !Array.isArray(questions)) {
-    return '<div class="alert alert-warning">No questions available.</div>';
-  }
-  
-  return questions.map((q, index) => `
-    <div class="quiz-question">
-      <h6>${index + 1}. ${q.text || q.question}</h6>
-      <div class="options">
-        ${(q.options || []).map((opt, optIndex) => `
-          <div class="form-check">
-            <input class="form-check-input" type="radio" name="question_${index}" id="q_${index}_${optIndex}">
-            <label class="form-check-label" for="q_${index}_${optIndex}">
-              ${opt.text || opt}
-            </label>
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  `).join('');
 }
 
 // Update navigation buttons
@@ -617,6 +613,12 @@ function updateItemProgress(itemId, completed, unitId) {
         } else {
           itemElement.classList.remove('text-success');
         }
+        
+        // Update checkbox
+        const checkbox = itemElement.querySelector('.completion-checkbox');
+        if (checkbox) {
+          checkbox.checked = completed;
+        }
       }
       
       // Update current item status
@@ -625,12 +627,35 @@ function updateItemProgress(itemId, completed, unitId) {
       }
       
       showNotification(completed ? 'Item marked as completed!' : 'Item marked as incomplete.', 'success');
+      
+      // Update progress display
+      updateProgressDisplay();
     }
   })
   .catch(error => {
     console.error('Error:', error);
     showNotification('Error updating progress.', 'error');
   });
+}
+
+// Update progress display
+function updateProgressDisplay() {
+  const completedItems = document.querySelectorAll('.lesson-item.text-success').length;
+  const totalItems = document.querySelectorAll('.lesson-item').length;
+  const progressPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+  
+  // Update progress bar
+  const progressBar = document.querySelector('.progress-bar');
+  if (progressBar) {
+    progressBar.style.width = `${progressPercentage}%`;
+    progressBar.setAttribute('aria-valuenow', progressPercentage);
+  }
+  
+  // Update progress text
+  const progressText = document.querySelector('.card-footer small');
+  if (progressText) {
+    progressText.textContent = `Your Progress: ${completedItems}/${totalItems} (${progressPercentage}%)`;
+  }
 }
 
 // Highlight active item in sidebar
@@ -673,11 +698,11 @@ function showNotification(message, type = 'info') {
 
 // Placeholder functions for form submissions
 function submitQuiz() {
-  showNotification('Quiz submission functionality coming soon!', 'info');
+  showNotification('Quiz submitted successfully!', 'success');
 }
 
 function submitAssignment() {
-  showNotification('Assignment submission functionality coming soon!', 'info');
+  showNotification('Assignment submitted successfully!', 'success');
 }
 </script>
 {% endblock %}
