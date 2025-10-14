@@ -872,20 +872,40 @@ def api_create_chapter(unit_id):
     if 'user_id' not in session or session.get('user_type') not in ['lecturer', 'admin']:
         return jsonify({'ok': False, 'error': 'Unauthorized'}), 403
 
-    # compute next order index and default title
-    chapters = db.get_unit_chapters(unit_id) or []
-    next_idx = (max([c.get('order_index', 0) for c in chapters]) + 1) if chapters else 1
+    try:
+        # Verify unit exists
+        unit = db.get_unit_by_id(unit_id)
+        if not unit:
+            return jsonify({'ok': False, 'error': 'Unit not found'}), 404
 
-    data = request.form if request.form else request.json or {}
-    title = (data.get('title') or f'Chapter {next_idx}').strip()
-    description = (data.get('description') or '').strip()
+        data = request.form if request.form else request.json or {}
+        title = (data.get('title') or '').strip()
+        description = (data.get('description') or '').strip()
 
-    ch_id = db.add_chapter(unit_id=unit_id, title=title, description=description, order_index=next_idx)
-    if not ch_id:
-        return jsonify({'ok': False, 'error': 'Failed to create chapter'}), 400
+        # Generate title if empty
+        chapters = db.get_unit_chapters(unit_id) or []
+        if not title:
+            title = f'Chapter {len(chapters) + 1}'
 
-    return jsonify({'ok': True, 'chapter_id': ch_id})
+        # Validate title
+        if not title:
+            return jsonify({'ok': False, 'error': 'Chapter title is required'}), 400
+        
+        if len(title) > 255:
+            return jsonify({'ok': False, 'error': 'Title too long (max 255 characters)'}), 400
 
+        # Use simple order index based on count
+        order_index = len(chapters) + 1
+
+        ch_id = db.add_chapter(unit_id=unit_id, title=title, description=description, order_index=order_index)
+        if not ch_id:
+            return jsonify({'ok': False, 'error': 'Failed to create chapter in database'}), 400
+
+        return jsonify({'ok': True, 'chapter_id': ch_id})
+
+    except Exception as e:
+        print(f"Error in api_create_chapter: {e}")
+        return jsonify({'ok': False, 'error': 'Internal server error'}), 500
 @app.route('/api/unit/<int:unit_id>/item', methods=['POST'])
 def api_create_item(unit_id):
     """
