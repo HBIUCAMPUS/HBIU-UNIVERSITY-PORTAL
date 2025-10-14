@@ -708,48 +708,42 @@ def learning_interface(unit_id):
         flash('Unit not found', 'danger')
         return redirect(url_for('home'))
 
+    # Helper function to convert tuple to dict
+    def convert_to_dict(data, fields=None):
+        """Convert tuple to dictionary using field names"""
+        if hasattr(data, 'get') and callable(data.get):
+            return data  # Already a dict-like object
+        elif isinstance(data, (tuple, list)):
+            # Common field order for items: id, title, content, order_index, type, chapter_id, etc.
+            if fields:
+                return dict(zip(fields, data))
+            else:
+                # Default field mapping based on common database structure
+                default_fields = ['id', 'title', 'content', 'order_index', 'type', 'chapter_id', 'instructions', 'duration', 'video_url', 'video_file', 'attachment_filename']
+                return dict(zip(default_fields[:len(data)], data))
+        return data
+
     # Helper function for safe order_index extraction
     def get_order_index(item):
-        if hasattr(item, 'get') and callable(item.get):
-            # It's a dictionary-like object
-            return item.get('order_index', 0)
-        elif isinstance(item, (tuple, list)) and len(item) > 3:
-            # It's a tuple/list - assuming order_index is at position 3
-            return item[3] or 0
-        elif isinstance(item, (tuple, list)) and len(item) > 0:
-            # Fallback to first element
-            return item[0] or 0
-        return 0
+        item_dict = convert_to_dict(item)
+        return item_dict.get('order_index', 0)
 
     # Helper function for safe chapter order_index extraction
     def get_chapter_order_index(chapter):
-        if hasattr(chapter, 'get') and callable(chapter.get):
-            return chapter.get('order_index', 0)
-        elif isinstance(chapter, (tuple, list)) and len(chapter) > 2:
-            return chapter[2] or 0  # Assuming order_index is at position 2
-        elif isinstance(chapter, (tuple, list)) and len(chapter) > 0:
-            return chapter[0] or 0
-        return 0
+        chapter_dict = convert_to_dict(chapter)
+        return chapter_dict.get('order_index', 0)
 
-    # Helper function to safely get values from dict or tuple
+    # Helper function to safely get values
     def safe_get(data, key, default=None):
-        if hasattr(data, 'get') and callable(data.get):
-            return data.get(key, default)
-        elif isinstance(data, (tuple, list)):
-            # Try to find key position
-            if key == 'id' and len(data) > 0:
-                return data[0]
-            elif key == 'title' and len(data) > 1:
-                return data[1]
-            elif key == 'order_index' and len(data) > 2:
-                return data[2]
-            elif key == 'type' and len(data) > 4:
-                return data[4]  # Assuming type is at position 4
-        return default
+        data_dict = convert_to_dict(data)
+        return data_dict.get(key, default)
 
     # Chapters (sorted if order_index exists) - FIXED
     chapters = db.get_unit_chapters(unit_id) or []
-    chapters.sort(key=get_chapter_order_index)
+    
+    # Convert chapters to dictionaries and sort
+    chapters_dicts = [convert_to_dict(chapter, ['id', 'title', 'description', 'order_index', 'unit_id']) for chapter in chapters]
+    chapters_dicts.sort(key=get_chapter_order_index)
 
     # Progress (students only)
     is_student = ('user_id' in session and session.get('user_type') == 'student')
@@ -758,18 +752,22 @@ def learning_interface(unit_id):
 
     total_items = 0
     completed_items = 0
-    completed_chapters = 0  # NEW: Add this variable
+    completed_chapters = 0
     has_exam_item = False
 
     # Attach items and compute progress (non-exam only) - FIXED
-    for ch in chapters:
-        items = db.get_chapter_items(safe_get(ch, 'id')) or []
-        items.sort(key=get_order_index)  # FIXED: Using safe order_index function
+    for ch in chapters_dicts:
+        chapter_id = safe_get(ch, 'id')
+        items = db.get_chapter_items(chapter_id) or []
+        
+        # Convert items to dictionaries and sort
+        items_dicts = [convert_to_dict(item) for item in items]
+        items_dicts.sort(key=get_order_index)
 
         # NEW: Track chapter completion
         chapter_completed = True
         
-        for it in items:
+        for it in items_dicts:
             item_id = safe_get(it, 'id')
             it['completed'] = bool(progress_data.get(item_id, False))
             
@@ -784,14 +782,14 @@ def learning_interface(unit_id):
                     chapter_completed = False  # If any item not completed, chapter not completed
 
         # NEW: Count completed chapters
-        if chapter_completed and len(items) > 0:  # Only count if chapter has items and all are completed
+        if chapter_completed and len(items_dicts) > 0:  # Only count if chapter has items and all are completed
             completed_chapters += 1
 
-        ch['items'] = items
+        ch['items'] = items_dicts
 
     # If you don't persist an exam item, synthesize one
     if not has_exam_item:
-        chapters.append({
+        chapters_dicts.append({
             'id': -99999,
             'title': 'Final Examination',
             'items': [{
@@ -811,15 +809,14 @@ def learning_interface(unit_id):
     return render_template(
         'learning_interface.html',
         unit=unit,
-        chapters=chapters,
+        chapters=chapters_dicts,
         progress_data=progress_data,
         total_items=total_items,
         completed_items=completed_items,
-        completed_chapters=completed_chapters,  # NEW: Add this to template context
+        completed_chapters=completed_chapters,
         progress_percentage=progress_percentage,
         exam_unlocked=exam_unlocked
     )
-
 @app.route('/update_progress', methods=['POST'])
 def update_progress():
     if 'user_id' not in session or session['user_type'] != 'student':
