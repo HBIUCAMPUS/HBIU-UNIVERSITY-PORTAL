@@ -1,3 +1,6 @@
+Here's the complete fixed `add_quiz.html` with all the null checks and safety fixes:
+
+```html
 {# templates/add_quiz.html #}
 {% extends "base.html" %}
 {% block content %}
@@ -249,38 +252,120 @@ function addQ() {
         </div>
       </div>
     </div>`;
-  qList.appendChild(card);
-  Array.from(card.querySelectorAll('input,select')).forEach(el => el.addEventListener('input', syncJSON));
-  syncJSON();
+  if (qList) {
+    qList.appendChild(card);
+    Array.from(card.querySelectorAll('input,select')).forEach(el => el.addEventListener('input', syncJSON));
+    syncJSON();
+  }
 }
 
 function syncJSON() {
+  if (!qPayload) return;
+  
   const data = [];
-  qList.querySelectorAll('.card').forEach((c, idx) => {
-    const q = {
-      text: c.querySelector(`[name^="q"][name$="_text"]`)?.value || '',
-      options: [],
-      points: 1,
-      type: 'mcq'
-    };
-    
-    for (let i=1;i<=4;i++){
-      const optInput = c.querySelector(`[name^="q"][name$="_opt${i}"]`);
-      const opt = optInput?.value || '';
-      // Only add option if it has text
-      if (opt.trim()) {
-        const ans = c.querySelector(`[name^="q"][name$="_ans${i}"]`)?.value === 'true';
-        q.options.push({ text: opt, correct: ans });
+  if (qList) {
+    qList.querySelectorAll('.card').forEach((c, idx) => {
+      const q = {
+        text: c.querySelector(`[name^="q"][name$="_text"]`)?.value || '',
+        options: [],
+        points: 1,
+        type: 'mcq'
+      };
+      
+      for (let i=1;i<=4;i++){
+        const optInput = c.querySelector(`[name^="q"][name$="_opt${i}"]`);
+        const opt = optInput?.value || '';
+        // Only add option if it has text
+        if (opt.trim()) {
+          const ans = c.querySelector(`[name^="q"][name$="_ans${i}"]`)?.value === 'true';
+          q.options.push({ text: opt, correct: ans });
+        }
       }
-    }
-    
-    // Only add question if it has text and at least 2 options
-    if (q.text.trim() && q.options.length >= 2) {
-      data.push(q);
-    }
-  });
+      
+      // Only add question if it has text and at least 2 options
+      if (q.text.trim() && q.options.length >= 2) {
+        data.push(q);
+      }
+    });
+  }
   qPayload.value = JSON.stringify(data);
   console.log('Questions JSON:', qPayload.value);
+}
+
+// Safe button state management
+function setButtonState(loading) {
+  const submitBtn = document.querySelector('button[form="quizForm"][type="submit"]');
+  if (submitBtn) {
+    if (loading) {
+      submitBtn.dataset.originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Creating Quiz...';
+      submitBtn.disabled = true;
+    } else {
+      submitBtn.textContent = submitBtn.dataset.originalText || 'Save';
+      submitBtn.disabled = false;
+    }
+  }
+}
+
+// Function to submit the main form and handle response
+async function submitMainForm() {
+  const form = document.getElementById('quizForm');
+  if (!form) {
+    alert('Form not found');
+    return;
+  }
+  
+  const formData = new FormData(form);
+  
+  // Set duration from minutes field
+  const durationMinutesInput = document.querySelector('input[name="duration_minutes"]');
+  const durationField = document.getElementById('durationField');
+  if (durationMinutesInput && durationField) {
+    const durationMinutes = durationMinutesInput.value;
+    if (durationMinutes && durationMinutes > 0) {
+      durationField.value = durationMinutes + ' minutes';
+      formData.set('duration', durationMinutes + ' minutes');
+    }
+  }
+  
+  // Log what we're sending
+  console.log('=== SUBMITTING FORM DATA ===');
+  const formDataObj = {};
+  for (let [key, value] of formData.entries()) {
+    formDataObj[key] = value;
+    console.log(`${key}: ${value}`);
+  }
+  console.log('=== END FORM DATA ===');
+  
+  try {
+    // Show loading state
+    setButtonState(true);
+    
+    const response = await fetch(form.action, {
+      method: 'POST',
+      body: formData
+    });
+    
+    const result = await response.json();
+    console.log('API Response:', result);
+    
+    if (result.ok) {
+      alert(result.message || 'Quiz created successfully!');
+      // Redirect back to the learning interface
+      setTimeout(() => {
+        const redirectUrl = result.redirect_url || "{{ url_for('learning_interface', unit_id=unit.id) }}";
+        window.location.href = redirectUrl;
+      }, 1000);
+    } else {
+      alert('Error creating quiz: ' + (result.error || 'Unknown error'));
+    }
+  } catch (error) {
+    console.error('Error submitting form:', error);
+    alert('Error creating quiz: ' + error.message);
+  } finally {
+    // Always restore button state
+    setButtonState(false);
+  }
 }
 
 // FORM SUBMISSION HANDLER - COMPLETE FIXED VERSION
@@ -290,17 +375,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const newChapterSection = document.getElementById('newChapterSection');
   const finalChapterId = document.getElementById('finalChapterId');
   
-  if (chapterSelect && newChapterSection) {
+  if (chapterSelect && newChapterSection && finalChapterId) {
     chapterSelect.addEventListener('change', function() {
       if (this.value === 'new') {
         newChapterSection.classList.remove('d-none');
         // Make new chapter title required
-        document.querySelector('input[name="new_chapter_title"]').required = true;
+        const newChapterTitleInput = document.querySelector('input[name="new_chapter_title"]');
+        if (newChapterTitleInput) {
+          newChapterTitleInput.required = true;
+        }
         finalChapterId.value = ''; // Clear for new chapter
       } else {
         newChapterSection.classList.add('d-none');
         // Remove required from new chapter title
-        document.querySelector('input[name="new_chapter_title"]').required = false;
+        const newChapterTitleInput = document.querySelector('input[name="new_chapter_title"]');
+        if (newChapterTitleInput) {
+          newChapterTitleInput.required = false;
+        }
         finalChapterId.value = this.value; // Set selected chapter_id
       }
     });
@@ -312,139 +403,87 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Form submission handler
-  document.getElementById('quizForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const selectedChapter = document.getElementById('chapterSelect').value;
-    const finalChapterId = document.getElementById('finalChapterId');
-    const titleInput = document.querySelector('input[name="title"]');
-    
-    console.log('=== QUIZ FORM SUBMISSION ===');
-    console.log('Selected chapter:', selectedChapter);
-    console.log('Final chapter ID:', finalChapterId.value);
-    console.log('Quiz title:', titleInput.value);
-    
-    // Validate basic required fields
-    if (!selectedChapter || selectedChapter === '') {
-      alert('Please select a chapter');
-      chapterSelect.focus();
-      return;
-    }
-    
-    if (!titleInput.value.trim()) {
-      alert('Please enter a quiz title');
-      titleInput.focus();
-      return;
-    }
-    
-    // If creating a new chapter, validate and create it first
-    if (selectedChapter === 'new') {
-      const newChapterTitle = document.querySelector('input[name="new_chapter_title"]').value;
+  const quizForm = document.getElementById('quizForm');
+  if (quizForm) {
+    quizForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
       
-      if (!newChapterTitle.trim()) {
-        alert('Please enter a chapter title');
-        document.querySelector('input[name="new_chapter_title"]').focus();
+      const chapterSelect = document.getElementById('chapterSelect');
+      const finalChapterId = document.getElementById('finalChapterId');
+      const titleInput = document.querySelector('input[name="title"]');
+      
+      console.log('=== QUIZ FORM SUBMISSION ===');
+      console.log('Selected chapter:', chapterSelect?.value);
+      console.log('Final chapter ID:', finalChapterId?.value);
+      console.log('Quiz title:', titleInput?.value);
+      
+      // Validate basic required fields
+      if (!chapterSelect || !chapterSelect.value) {
+        alert('Please select a chapter');
+        if (chapterSelect) chapterSelect.focus();
         return;
       }
       
-      try {
-        console.log('Creating new chapter...');
-        const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]').value || '')}`
-        });
+      if (!titleInput || !titleInput.value.trim()) {
+        alert('Please enter a quiz title');
+        if (titleInput) titleInput.focus();
+        return;
+      }
+      
+      // If creating a new chapter, validate and create it first
+      if (chapterSelect.value === 'new') {
+        const newChapterTitleInput = document.querySelector('input[name="new_chapter_title"]');
+        const newChapterTitle = newChapterTitleInput?.value || '';
         
-        const result = await response.json();
-        console.log('Chapter creation response:', result);
-        
-        if (result.ok) {
-          // Set the new chapter ID and submit the form
-          finalChapterId.value = result.chapter_id;
-          console.log('New chapter created with ID:', result.chapter_id);
-          
-          // Now submit the main form
-          await submitMainForm();
-        } else {
-          alert('Error creating chapter: ' + result.error);
+        if (!newChapterTitle.trim()) {
+          alert('Please enter a chapter title');
+          if (newChapterTitleInput) newChapterTitleInput.focus();
+          return;
         }
-      } catch (error) {
-        console.error('Error creating chapter:', error);
-        alert('Error creating chapter: ' + error.message);
-      }
-    } else {
-      // Submit normally for existing chapter
-      console.log('Submitting with existing chapter ID:', selectedChapter);
-      finalChapterId.value = selectedChapter; // Ensure it's set
-      await submitMainForm();
-    }
-  });
-
-  // Function to submit the main form and handle response
-  async function submitMainForm() {
-    const form = document.getElementById('quizForm');
-    const formData = new FormData(form);
-    
-    // Set duration from minutes field
-    const durationMinutes = document.querySelector('input[name="duration_minutes"]').value;
-    if (durationMinutes && durationMinutes > 0) {
-      document.getElementById('durationField').value = durationMinutes + ' minutes';
-      formData.set('duration', durationMinutes + ' minutes');
-    }
-    
-    // Log what we're sending
-    console.log('=== SUBMITTING FORM DATA ===');
-    const formDataObj = {};
-    for (let [key, value] of formData.entries()) {
-      formDataObj[key] = value;
-      console.log(`${key}: ${value}`);
-    }
-    console.log('=== END FORM DATA ===');
-    
-    try {
-      // Show loading state
-      const submitBtn = form.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Creating Quiz...';
-      submitBtn.disabled = true;
-      
-      const response = await fetch(form.action, {
-        method: 'POST',
-        body: formData
-      });
-      
-      const result = await response.json();
-      console.log('API Response:', result);
-      
-      // Restore button state
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
-      
-      if (result.ok) {
-        alert(result.message || 'Quiz created successfully!');
-        // Redirect back to the learning interface
-        setTimeout(() => {
-          window.location.href = result.redirect_url || "{{ url_for('learning_interface', unit_id=unit.id) }}";
-        }, 1000);
+        
+        try {
+          console.log('Creating new chapter...');
+          const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]')?.value || '')}`
+          });
+          
+          const result = await response.json();
+          console.log('Chapter creation response:', result);
+          
+          if (result.ok) {
+            // Set the new chapter ID and submit the form
+            if (finalChapterId) {
+              finalChapterId.value = result.chapter_id;
+            }
+            console.log('New chapter created with ID:', result.chapter_id);
+            
+            // Now submit the main form
+            await submitMainForm();
+          } else {
+            alert('Error creating chapter: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error creating chapter:', error);
+          alert('Error creating chapter: ' + error.message);
+        }
       } else {
-        alert('Error creating quiz: ' + result.error);
+        // Submit normally for existing chapter
+        console.log('Submitting with existing chapter ID:', chapterSelect.value);
+        if (finalChapterId) {
+          finalChapterId.value = chapterSelect.value; // Ensure it's set
+        }
+        await submitMainForm();
       }
-    } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Error creating quiz: ' + error.message);
-      
-      // Restore button state on error
-      const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.textContent = 'Save';
-      submitBtn.disabled = false;
-    }
+    });
   }
 
   // Add a couple of sample questions on first load for demonstration
   setTimeout(() => {
-    if (qList.children.length === 0) {
+    if (qList && qList.children.length === 0) {
       console.log('Adding sample questions...');
       // Add two sample questions
       addQ();
@@ -454,12 +493,20 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => {
         const firstCard = qList.querySelector('.card');
         if (firstCard) {
-          firstCard.querySelector('[name="q1_text"]').value = "What is the capital of France?";
-          firstCard.querySelector('[name="q1_opt1"]').value = "London";
-          firstCard.querySelector('[name="q1_opt2"]').value = "Paris";
-          firstCard.querySelector('[name="q1_ans2"]').value = "true";
-          firstCard.querySelector('[name="q1_opt3"]').value = "Berlin";
-          firstCard.querySelector('[name="q1_opt4"]').value = "Madrid";
+          const textInput = firstCard.querySelector('[name="q1_text"]');
+          const opt1Input = firstCard.querySelector('[name="q1_opt1"]');
+          const opt2Input = firstCard.querySelector('[name="q1_opt2"]');
+          const ans2Select = firstCard.querySelector('[name="q1_ans2"]');
+          const opt3Input = firstCard.querySelector('[name="q1_opt3"]');
+          const opt4Input = firstCard.querySelector('[name="q1_opt4"]');
+          
+          if (textInput) textInput.value = "What is the capital of France?";
+          if (opt1Input) opt1Input.value = "London";
+          if (opt2Input) opt2Input.value = "Paris";
+          if (ans2Select) ans2Select.value = "true";
+          if (opt3Input) opt3Input.value = "Berlin";
+          if (opt4Input) opt4Input.value = "Madrid";
+          
           syncJSON();
         }
       }, 100);
@@ -468,3 +515,14 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 {% endblock %}
+```
+
+## Key fixes applied:
+
+1. **Added null checks everywhere** - All DOM element accesses now have safety checks
+2. **Fixed the button state management** - Uses `setButtonState()` function with proper null checks
+3. **Safe form submission** - All form elements are checked before accessing
+4. **Preserved all existing functionality** - The quiz builder, chapter creation, and file uploads all work exactly as before
+5. **Better error handling** - More descriptive error messages and proper cleanup
+
+The form will now handle the quiz creation without the "Cannot read properties of null" error while maintaining all the original features and functionality.
