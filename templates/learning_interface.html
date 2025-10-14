@@ -11,12 +11,16 @@
       <div class="card-body p-0">
         <div class="list-group list-group-flush" id="courseChapters">
           {% for chapter in chapters %}
-          <div class="list-group-item chapter-item" data-chapter-id="{{ chapter.id }}">
+          {% set chapter_id = chapter.id if chapter is mapping else chapter[0] if chapter is iterable and chapter is not string else 0 %}
+          {% set chapter_title = chapter.title if chapter is mapping else chapter[1] if chapter is iterable and chapter is not string and chapter|length > 1 else "Chapter " ~ loop.index %}
+          {% set chapter_description = chapter.description if chapter is mapping else chapter[2] if chapter is iterable and chapter is not string and chapter|length > 2 else "" %}
+          
+          <div class="list-group-item chapter-item" data-chapter-id="{{ chapter_id }}">
             <div class="d-flex justify-content-between align-items-center">
               <h6 class="mb-0 chapter-title" role="button" onclick="toggleChapter(this)">
-                <i class="fas fa-folder me-2"></i>{{ chapter.title }}
-                {% if chapter.description %}
-                <small class="text-muted d-block mt-1">{{ chapter.description }}</small>
+                <i class="fas fa-folder me-2"></i>{{ chapter_title }}
+                {% if chapter_description %}
+                <small class="text-muted d-block mt-1">{{ chapter_description }}</small>
                 {% endif %}
               </h6>
               <button class="btn btn-sm btn-link toggle-chapter" onclick="toggleChapter(this)">
@@ -25,46 +29,85 @@
             </div>
 
             <div class="chapter-content mt-2 ms-3" style="display: none;">
-              {% if chapter.items %}
-                {% for item in chapter.items %}
-                {% set is_exam = (item.type == 'exam') %}
-                <div
-                  class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
-                  data-item-id="{{ item.id }}"
-                  data-type="{{ item.type }}"
-                  data-locked="{{ (is_exam and not exam_unlocked)|int }}"
-                  onclick="loadItemContent(this)"
-                  style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
-                  onmouseover="this.style.backgroundColor='#f8f9fa'" 
-                  onmouseout="this.style.backgroundColor='transparent'"
-                >
-                  <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
-                    <input class="form-check-input completion-checkbox" type="checkbox"
-                           {% if item.completed %}checked{% endif %}
-                           {% if is_exam and not exam_unlocked %}disabled{% endif %}
-                           data-item-id="{{ item.id }}"
-                           onclick="event.stopPropagation(); updateItemProgress({{ item.id }}, this.checked, {{ unit.id }})">
-                  </div>
-
-                  <small class="flex-grow-1">
-                    {% if is_exam %}
-                      {% if exam_unlocked %}
-                      <i class="fas fa-star text-warning me-1"></i>
-                      <strong>Final Exam</strong>
-                      {% else %}
-                      <i class="fas fa-lock me-1"></i>
-                      <span class="text-muted">Final Exam (Complete all content first)</span>
-                      {% endif %}
-                    {% else %}
-                      <i class="fas {% if item.type == 'quiz' %}fa-question-circle text-info{% elif item.type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
-                      {{ item.title }}
-                    {% endif %}
-                  </small>
-
-                  {% if item.duration and not is_exam %}
-                  <small class="text-muted ms-2">{{ item.duration }}</small>
+              {% set chapter_items = [] %}
+              
+              {# Safe way to get items #}
+              {% if chapter is mapping %}
+                {% if chapter.items is defined %}
+                  {% if chapter.items is iterable and chapter.items is not string %}
+                    {% set chapter_items = chapter.items %}
                   {% endif %}
-                </div>
+                {% elif chapter.get('items') is defined %}
+                  {% if chapter.get('items') is iterable and chapter.get('items') is not string %}
+                    {% set chapter_items = chapter.get('items', []) %}
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+              
+              {% if chapter_items and chapter_items|length > 0 %}
+                {% for item in chapter_items %}
+                  {% set is_exam = false %}
+                  {% set item_id = 0 %}
+                  {% set item_title = "Untitled Item" %}
+                  {% set item_type = "lesson" %}
+                  {% set item_completed = false %}
+                  {% set item_duration = "" %}
+                  
+                  {# Handle both dict and tuple items #}
+                  {% if item is mapping %}
+                    {% set is_exam = (item.type == 'exam') if item.type is defined else false %}
+                    {% set item_id = item.id if item.id is defined else 0 %}
+                    {% set item_title = item.title if item.title is defined else "Untitled Item" %}
+                    {% set item_type = item.type if item.type is defined else "lesson" %}
+                    {% set item_completed = item.completed if item.completed is defined else false %}
+                    {% set item_duration = item.duration if item.duration is defined else "" %}
+                  {% elif item is iterable and item is not string %}
+                    {# Assuming tuple structure: (id, title, content, order_index, type, ...) #}
+                    {% set is_exam = (item[4] == 'exam') if item|length > 4 else false %}
+                    {% set item_id = item[0] if item|length > 0 else 0 %}
+                    {% set item_title = item[1] if item|length > 1 else "Untitled Item" %}
+                    {% set item_type = item[4] if item|length > 4 else "lesson" %}
+                    {% set item_completed = false %}
+                    {% set item_duration = item[8] if item|length > 8 else "" %}
+                  {% endif %}
+                  
+                  <div
+                    class="d-flex align-items-center mb-2 lesson-item {% if item_completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
+                    data-item-id="{{ item_id }}"
+                    data-type="{{ item_type }}"
+                    data-locked="{{ (is_exam and not exam_unlocked)|int }}"
+                    onclick="loadItemContent(this)"
+                    style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#f8f9fa'" 
+                    onmouseout="this.style.backgroundColor='transparent'"
+                  >
+                    <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
+                      <input class="form-check-input completion-checkbox" type="checkbox"
+                             {% if item_completed %}checked{% endif %}
+                             {% if is_exam and not exam_unlocked %}disabled{% endif %}
+                             data-item-id="{{ item_id }}"
+                             onclick="event.stopPropagation(); updateItemProgress({{ item_id }}, this.checked, {{ unit.id }})">
+                    </div>
+
+                    <small class="flex-grow-1">
+                      {% if is_exam %}
+                        {% if exam_unlocked %}
+                        <i class="fas fa-star text-warning me-1"></i>
+                        <strong>Final Exam</strong>
+                        {% else %}
+                        <i class="fas fa-lock me-1"></i>
+                        <span class="text-muted">Final Exam (Complete all content first)</span>
+                        {% endif %}
+                      {% else %}
+                        <i class="fas {% if item_type == 'quiz' %}fa-question-circle text-info{% elif item_type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
+                        {{ item_title }}
+                      {% endif %}
+                    </small>
+
+                    {% if item_duration and not is_exam %}
+                    <small class="text-muted ms-2">{{ item_duration }}</small>
+                    {% endif %}
+                  </div>
                 {% endfor %}
               {% else %}
                 <div class="text-muted small">No items available in this chapter</div>
@@ -303,6 +346,10 @@
   background: #d1edff;
   border-color: #b8daff;
 }
+.lesson-item.active {
+  background-color: #e3f2fd !important;
+  border-color: #2196f3 !important;
+}
 .completion-checkbox:checked {
   background-color: #28a745;
   border-color: #28a745;
@@ -333,10 +380,6 @@
 }
 .prose p {
   margin-bottom: 1rem;
-}
-.lesson-item.active {
-  background-color: #e3f2fd !important;
-  border-color: #2196f3 !important;
 }
 </style>
 
