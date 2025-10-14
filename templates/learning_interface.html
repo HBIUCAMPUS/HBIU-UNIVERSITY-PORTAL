@@ -26,52 +26,48 @@
 
             <div class="chapter-content mt-2 ms-3" style="display: none;">
               {% if chapter.items %}
-                {% if chapter.items is iterable and chapter.items is not string %}
-                  {% for item in chapter.items %}
-                  {% set is_exam = (item.type == 'exam') %}
-                  <div
-                    class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
-                    data-item-id="{{ item.id }}"
-                    data-type="{{ item.type }}"
-                    data-locked="{{ (is_exam and not exam_unlocked)|int }}"
-                    onclick="loadItemContent({{ item|tojson }})"
-                    style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
-                    onmouseover="this.style.backgroundColor='#f8f9fa'" 
-                    onmouseout="this.style.backgroundColor='transparent'"
-                  >
-                    <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
-                      <input class="form-check-input completion-checkbox" type="checkbox"
-                             {% if item.completed %}checked{% endif %}
-                             {% if is_exam and not exam_unlocked %}disabled{% endif %}
-                             data-item-id="{{ item.id }}"
-                             onclick="event.stopPropagation(); updateItemProgress({{ item.id }}, this.checked, {{ unit.id }})">
-                    </div>
-
-                    <small class="flex-grow-1">
-                      {% if is_exam %}
-                        {% if exam_unlocked %}
-                        <i class="fas fa-star text-warning me-1"></i>
-                        <strong>Final Exam</strong>
-                        {% else %}
-                        <i class="fas fa-lock me-1"></i>
-                        <span class="text-muted">Final Exam (Complete all content first)</span>
-                        {% endif %}
-                      {% else %}
-                        <i class="fas {% if item.type == 'quiz' %}fa-question-circle text-info{% elif item.type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
-                        {{ item.title }}
-                      {% endif %}
-                    </small>
-
-                    {% if item.duration and not is_exam %}
-                    <small class="text-muted ms-2">{{ item.duration }}</small>
-                    {% endif %}
+                {% for item in chapter.items %}
+                {% set is_exam = (item.type == 'exam') %}
+                <div
+                  class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
+                  data-item-id="{{ item.id }}"
+                  data-type="{{ item.type }}"
+                  data-locked="{{ (is_exam and not exam_unlocked)|int }}"
+                  onclick="loadItemContent(this)"
+                  style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
+                  onmouseover="this.style.backgroundColor='#f8f9fa'" 
+                  onmouseout="this.style.backgroundColor='transparent'"
+                >
+                  <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
+                    <input class="form-check-input completion-checkbox" type="checkbox"
+                           {% if item.completed %}checked{% endif %}
+                           {% if is_exam and not exam_unlocked %}disabled{% endif %}
+                           data-item-id="{{ item.id }}"
+                           onclick="event.stopPropagation(); updateItemProgress({{ item.id }}, this.checked, {{ unit.id }})">
                   </div>
-                  {% endfor %}
-                {% else %}
-                  <div class="text-muted small">No items available</div>
-                {% endif %}
+
+                  <small class="flex-grow-1">
+                    {% if is_exam %}
+                      {% if exam_unlocked %}
+                      <i class="fas fa-star text-warning me-1"></i>
+                      <strong>Final Exam</strong>
+                      {% else %}
+                      <i class="fas fa-lock me-1"></i>
+                      <span class="text-muted">Final Exam (Complete all content first)</span>
+                      {% endif %}
+                    {% else %}
+                      <i class="fas {% if item.type == 'quiz' %}fa-question-circle text-info{% elif item.type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
+                      {{ item.title }}
+                    {% endif %}
+                  </small>
+
+                  {% if item.duration and not is_exam %}
+                  <small class="text-muted ms-2">{{ item.duration }}</small>
+                  {% endif %}
+                </div>
+                {% endfor %}
               {% else %}
-                <div class="text-muted small">No items available</div>
+                <div class="text-muted small">No items available in this chapter</div>
               {% endif %}
             </div>
           </div>
@@ -338,6 +334,10 @@
 .prose p {
   margin-bottom: 1rem;
 }
+.lesson-item.active {
+  background-color: #e3f2fd !important;
+  border-color: #2196f3 !important;
+}
 </style>
 
 <script>
@@ -387,13 +387,25 @@ function toggleChapter(element) {
 }
 
 // Load item content into main window
-function loadItemContent(item) {
-  if (item.type === 'exam' && !{{ 'true' if exam_unlocked else 'false' }}) {
+function loadItemContent(element) {
+  const itemId = parseInt(element.dataset.itemId);
+  const itemType = element.dataset.type;
+  const itemTitle = element.querySelector('.flex-grow-1').textContent.trim();
+  const itemCompleted = element.classList.contains('text-success');
+  const itemLocked = element.dataset.locked === '1';
+  
+  if (itemType === 'exam' && itemLocked) {
     showNotification('Complete all content to unlock the final exam!', 'warning');
     return;
   }
 
-  currentItem = item;
+  currentItem = {
+    id: itemId,
+    type: itemType,
+    title: itemTitle,
+    completed: itemCompleted,
+    locked: itemLocked
+  };
   
   // Hide all content sections
   document.getElementById('welcomeContent').classList.add('d-none');
@@ -403,29 +415,29 @@ function loadItemContent(item) {
   document.getElementById('examContent').classList.add('d-none');
   
   // Update title
-  document.getElementById('contentTitle').textContent = item.title;
+  document.getElementById('contentTitle').textContent = itemTitle;
   
   // Show completion section for non-exam items
-  if (item.type !== 'exam') {
+  if (itemType !== 'exam') {
     document.getElementById('completionSection').classList.remove('d-none');
-    document.getElementById('markComplete').checked = item.completed;
+    document.getElementById('markComplete').checked = itemCompleted;
   } else {
     document.getElementById('completionSection').classList.add('d-none');
   }
   
   // Load specific content based on type
-  switch(item.type) {
+  switch(itemType) {
     case 'lesson':
-      loadLesson(item);
+      loadLesson(currentItem);
       break;
     case 'quiz':
-      loadQuiz(item);
+      loadQuiz(currentItem);
       break;
     case 'assignment':
-      loadAssignment(item);
+      loadAssignment(currentItem);
       break;
     case 'exam':
-      loadExam(item);
+      loadExam(currentItem);
       break;
   }
   
@@ -433,7 +445,7 @@ function loadItemContent(item) {
   updateNavigation();
   
   // Highlight active item in sidebar
-  highlightActiveItem(item.id);
+  highlightActiveItem(itemId);
 }
 
 // Load lesson content
@@ -452,6 +464,10 @@ function loadLesson(item) {
       <h6>About this lesson</h6>
       <p>This lesson covers important concepts related to "${item.title}".</p>
       <p>In a real implementation, this content would come from your database.</p>
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Note:</strong> This is demo content. Actual lesson materials would be loaded from the database.
+      </div>
     </div>
   `;
   
@@ -462,6 +478,9 @@ function loadLesson(item) {
     <div class="d-grid gap-2">
       <button class="btn btn-outline-primary btn-sm" onclick="showNotification('Downloading lesson materials...', 'info')">
         <i class="fas fa-download me-1"></i>Download Notes
+      </button>
+      <button class="btn btn-outline-secondary btn-sm" onclick="showNotification('Opening supplementary materials...', 'info')">
+        <i class="fas fa-external-link-alt me-1"></i>Additional Resources
       </button>
     </div>
   `;
@@ -480,7 +499,7 @@ function loadQuiz(item) {
   const questionsEl = document.getElementById('quizQuestions');
   questionsEl.innerHTML = `
     <div class="quiz-question">
-      <h6>1. Sample Question 1</h6>
+      <h6>1. What is the main topic of this quiz?</h6>
       <div class="options">
         <div class="form-check">
           <input class="form-check-input" type="radio" name="question_1" id="q_1_0">
@@ -497,21 +516,25 @@ function loadQuiz(item) {
       </div>
     </div>
     <div class="quiz-question">
-      <h6>2. Sample Question 2</h6>
+      <h6>2. Which of the following statements is true?</h6>
       <div class="options">
         <div class="form-check">
           <input class="form-check-input" type="radio" name="question_2" id="q_2_0">
-          <label class="form-check-label" for="q_2_0">Option A</label>
+          <label class="form-check-label" for="q_2_0">Statement A is correct</label>
         </div>
         <div class="form-check">
           <input class="form-check-input" type="radio" name="question_2" id="q_2_1">
-          <label class="form-check-label" for="q_2_1">Option B</label>
+          <label class="form-check-label" for="q_2_1">Statement B is correct</label>
         </div>
         <div class="form-check">
           <input class="form-check-input" type="radio" name="question_2" id="q_2_2">
-          <label class="form-check-label" for="q_2_2">Option C</label>
+          <label class="form-check-label" for="q_2_2">Both statements are correct</label>
         </div>
       </div>
+    </div>
+    <div class="alert alert-info">
+      <i class="fas fa-info-circle me-2"></i>
+      <strong>Note:</strong> This is demo quiz content. Actual quiz questions would be loaded from the database.
     </div>
   `;
 }
@@ -532,6 +555,15 @@ function loadAssignment(item) {
         <li>Submit your work in PDF format</li>
         <li>Include all relevant calculations and explanations</li>
         <li>Cite any references used</li>
+        <li>Minimum 1000 words</li>
+        <li>Include diagrams or charts where applicable</li>
+      </ul>
+      <p><strong>Grading Criteria:</strong></p>
+      <ul>
+        <li>Content accuracy (40%)</li>
+        <li>Clarity of explanation (30%)</li>
+        <li>Research depth (20%)</li>
+        <li>Formatting and presentation (10%)</li>
       </ul>
     </div>
   `;
@@ -543,6 +575,12 @@ function loadAssignment(item) {
       <p><strong>Due Date:</strong> One week from now</p>
       <p><strong>Points:</strong> 100</p>
       <p><strong>Submission Format:</strong> PDF</p>
+      <p><strong>Word Count:</strong> 1000+ words</p>
+      <p><strong>References:</strong> Minimum 5 academic sources</p>
+    </div>
+    <div class="alert alert-info mt-3">
+      <i class="fas fa-info-circle me-2"></i>
+      <strong>Note:</strong> This is demo assignment content. Actual assignment details would be loaded from the database.
     </div>
   `;
 }
@@ -576,7 +614,7 @@ function navigateItem(direction) {
     const nextItem = allItems[newIndex];
     
     // Skip locked exams
-    if (nextItem.type === 'exam' && !{{ 'true' if exam_unlocked else 'false' }}) {
+    if (nextItem.type === 'exam' && nextItem.locked) {
       if (direction > 0) {
         navigateItem(1); // Skip to next
       } else {
@@ -585,7 +623,11 @@ function navigateItem(direction) {
       return;
     }
     
-    loadItemContent(nextItem);
+    // Find and click the next item in the sidebar
+    const nextItemElement = document.querySelector(`.lesson-item[data-item-id="${nextItem.id}"]`);
+    if (nextItemElement) {
+      loadItemContent(nextItemElement);
+    }
   }
 }
 
@@ -705,11 +747,11 @@ function showNotification(message, type = 'info') {
 
 // Placeholder functions for form submissions
 function submitQuiz() {
-  showNotification('Quiz submitted successfully!', 'success');
+  showNotification('Quiz submitted successfully! Your answers have been recorded.', 'success');
 }
 
 function submitAssignment() {
-  showNotification('Assignment submitted successfully!', 'success');
+  showNotification('Assignment submitted successfully! Your work has been uploaded.', 'success');
 }
 </script>
 {% endblock %}
