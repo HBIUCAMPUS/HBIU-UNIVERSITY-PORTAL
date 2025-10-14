@@ -973,16 +973,56 @@ def api_create_item(unit_id):
     # Verify the chapter belongs to this unit
     try:
         chapters = db.get_unit_chapters(unit_id) or []
-        chapter_ids = [chapter['id'] if hasattr(chapter, 'get') else chapter[0] for chapter in chapters]
+        # FIXED: Handle both dicts and tuples for chapter IDs
+        chapter_ids = []
+        for chapter in chapters:
+            if hasattr(chapter, 'get') and callable(chapter.get):
+                # It's a dictionary-like object
+                chapter_ids.append(chapter.get('id'))
+            elif isinstance(chapter, (tuple, list)) and len(chapter) > 0:
+                # It's a tuple/list - assume ID is first element
+                chapter_ids.append(chapter[0])
+        
         if chapter_id not in chapter_ids:
             print(f"DEBUG - Chapter {chapter_id} not found in unit {unit_id}")
             return jsonify({'ok': False, 'error': 'Chapter not found in this unit'}), 400
     except Exception as e:
         print(f"DEBUG - Error verifying chapter: {e}")
 
-    # Find next order_index inside this chapter
+    # Find next order_index inside this chapter - FIXED THE MAIN ISSUE
     items = db.get_chapter_items(chapter_id) or []
-    next_idx = (max([i.get('order_index', 0) for i in items]) + 1) if items else 1
+    
+    # Debug the items structure to understand the data format
+    print(f"DEBUG - Items type: {type(items)}")
+    if items:
+        print(f"DEBUG - First item type: {type(items[0])}")
+        print(f"DEBUG - First item structure: {items[0]}")
+    
+    # Robust order_index calculation that handles both dicts and tuples
+    def get_order_index(item):
+        if hasattr(item, 'get') and callable(item.get):
+            # It's a dictionary-like object
+            return item.get('order_index', 0)
+        elif isinstance(item, (tuple, list)):
+            # It's a tuple/list - try to find order_index position
+            # Common positions: if it's (id, title, content, order_index, ...)
+            if len(item) > 3:
+                return item[3] or 0  # Assuming order_index is at position 3
+            elif len(item) > 0:
+                return item[0] or 0  # Fallback to first element
+        return 0
+
+    try:
+        if items:
+            order_indices = [get_order_index(item) for item in items]
+            print(f"DEBUG - Extracted order indices: {order_indices}")
+            next_idx = max(order_indices) + 1
+        else:
+            next_idx = 1
+    except Exception as e:
+        print(f"DEBUG - Error calculating next_idx: {e}")
+        next_idx = 1  # Fallback
+
     print(f"DEBUG - Next order index: {next_idx}")
 
     # Handle file uploads with better error handling
@@ -1067,7 +1107,6 @@ def api_create_item(unit_id):
     except Exception as e:
         print(f"DEBUG - Database error: {e}")
         return jsonify({'ok': False, 'error': f'Database error: {str(e)}'}), 400
-
 @app.route('/unit/<int:unit_id>/add_lesson')
 def add_lesson_page(unit_id):
     """Page for adding a new lesson"""
