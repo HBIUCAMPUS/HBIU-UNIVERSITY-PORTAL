@@ -25,46 +25,54 @@
             </div>
 
             <div class="chapter-content mt-2 ms-3" style="display: none;">
-              {% for item in chapter.items %}
-              {% set is_exam = (item.type == 'exam') %}
-              <div
-                class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
-                data-item-id="{{ item.id }}"
-                data-type="{{ item.type }}"
-                data-locked="{{ (is_exam and not exam_unlocked)|int }}"
-                onclick="loadItemContent({{ item|tojson }})"
-                style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
-                onmouseover="this.style.backgroundColor='#f8f9fa'" 
-                onmouseout="this.style.backgroundColor='transparent'"
-              >
-                <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
-                  <input class="form-check-input completion-checkbox" type="checkbox"
-                         {% if item.completed %}checked{% endif %}
-                         {% if is_exam and not exam_unlocked %}disabled{% endif %}
-                         data-item-id="{{ item.id }}"
-                         onclick="event.stopPropagation(); updateItemProgress({{ item.id }}, this.checked, {{ unit.id }})">
-                </div>
+              {% if chapter.items %}
+                {% if chapter.items is iterable and chapter.items is not string %}
+                  {% for item in chapter.items %}
+                  {% set is_exam = (item.type == 'exam') %}
+                  <div
+                    class="d-flex align-items-center mb-2 lesson-item {% if item.completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
+                    data-item-id="{{ item.id }}"
+                    data-type="{{ item.type }}"
+                    data-locked="{{ (is_exam and not exam_unlocked)|int }}"
+                    onclick="loadItemContent({{ item|tojson }})"
+                    style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
+                    onmouseover="this.style.backgroundColor='#f8f9fa'" 
+                    onmouseout="this.style.backgroundColor='transparent'"
+                  >
+                    <div class="form-check me-2 {% if is_exam %}d-none{% endif %}">
+                      <input class="form-check-input completion-checkbox" type="checkbox"
+                             {% if item.completed %}checked{% endif %}
+                             {% if is_exam and not exam_unlocked %}disabled{% endif %}
+                             data-item-id="{{ item.id }}"
+                             onclick="event.stopPropagation(); updateItemProgress({{ item.id }}, this.checked, {{ unit.id }})">
+                    </div>
 
-                <small class="flex-grow-1">
-                  {% if is_exam %}
-                    {% if exam_unlocked %}
-                    <i class="fas fa-star text-warning me-1"></i>
-                    <strong>Final Exam</strong>
-                    {% else %}
-                    <i class="fas fa-lock me-1"></i>
-                    <span class="text-muted">Final Exam (Complete all content first)</span>
+                    <small class="flex-grow-1">
+                      {% if is_exam %}
+                        {% if exam_unlocked %}
+                        <i class="fas fa-star text-warning me-1"></i>
+                        <strong>Final Exam</strong>
+                        {% else %}
+                        <i class="fas fa-lock me-1"></i>
+                        <span class="text-muted">Final Exam (Complete all content first)</span>
+                        {% endif %}
+                      {% else %}
+                        <i class="fas {% if item.type == 'quiz' %}fa-question-circle text-info{% elif item.type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
+                        {{ item.title }}
+                      {% endif %}
+                    </small>
+
+                    {% if item.duration and not is_exam %}
+                    <small class="text-muted ms-2">{{ item.duration }}</small>
                     {% endif %}
-                  {% else %}
-                    <i class="fas {% if item.type == 'quiz' %}fa-question-circle text-info{% elif item.type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
-                    {{ item.title }}
-                  {% endif %}
-                </small>
-
-                {% if item.duration and not is_exam %}
-                <small class="text-muted ms-2">{{ item.duration }}</small>
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="text-muted small">No items available</div>
                 {% endif %}
-              </div>
-              {% endfor %}
+              {% else %}
+                <div class="text-muted small">No items available</div>
+              {% endif %}
             </div>
           </div>
           {% endfor %}
@@ -339,10 +347,9 @@ let allItems = [];
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
-  // Collect all items from chapters
+  // Collect all items from the DOM
   allItems = [];
   
-  // We'll collect items from the DOM instead of template variables
   document.querySelectorAll('.lesson-item').forEach(itemEl => {
     const item = {
       id: parseInt(itemEl.dataset.itemId),
@@ -354,10 +361,13 @@ document.addEventListener('DOMContentLoaded', function() {
     allItems.push(item);
   });
 
-  // Expand first chapter by default
+  // Expand first chapter by default if it has items
   const firstChapter = document.querySelector('.chapter-item');
   if (firstChapter) {
-    toggleChapter(firstChapter.querySelector('.chapter-title'));
+    const chapterContent = firstChapter.querySelector('.chapter-content');
+    if (chapterContent && chapterContent.children.length > 0) {
+      toggleChapter(firstChapter.querySelector('.chapter-title'));
+    }
   }
 });
 
@@ -433,9 +443,6 @@ function loadLesson(item) {
   
   // Video content
   const videoContent = document.getElementById('videoContent');
-  const videoFrame = document.getElementById('lessonVideo');
-  
-  // For demo purposes - in real implementation, you'd get this from your data
   videoContent.classList.add('d-none'); // Hide video for now
   
   // Lesson description
