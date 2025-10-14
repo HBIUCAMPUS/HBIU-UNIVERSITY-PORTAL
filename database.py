@@ -410,7 +410,7 @@ def create_default_admin():
 # ==================== LEARNING INTERFACE FUNCTIONS ====================
 
 def get_unit_chapters(unit_id):
-    """Get all chapters for a unit - NEW FUNCTION"""
+    """Get all chapters for a unit - returns list of dictionaries"""
     conn = get_db()
     cursor = conn.cursor()
     try:
@@ -418,8 +418,25 @@ def get_unit_chapters(unit_id):
             cursor.execute("SELECT * FROM chapters WHERE unit_id = %s ORDER BY order_index", (unit_id,))
         else:
             cursor.execute("SELECT * FROM chapters WHERE unit_id = ? ORDER BY order_index", (unit_id,))
+        
         chapters = cursor.fetchall()
-        return chapters
+        # Convert to list of dictionaries for consistency
+        chapter_list = []
+        for chapter in chapters:
+            if hasattr(chapter, 'keys'):  # Already a dictionary (PostgreSQL)
+                chapter_list.append(dict(chapter))
+            else:  # Tuple (SQLite) - convert to dictionary
+                chapter_dict = {
+                    'id': chapter[0],
+                    'unit_id': chapter[1],
+                    'title': chapter[2],
+                    'description': chapter[3],
+                    'order_index': chapter[4] if len(chapter) > 4 else 0,
+                    'created_at': chapter[5] if len(chapter) > 5 else None
+                }
+                chapter_list.append(chapter_dict)
+        
+        return chapter_list
     except Exception as e:
         print(f"Error getting chapters: {e}")
         return []
