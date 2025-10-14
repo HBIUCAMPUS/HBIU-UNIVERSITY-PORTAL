@@ -58,6 +58,7 @@
     <!-- Hidden fields for API -->
     <input type="hidden" name="type" value="assignment">
     <input type="hidden" name="chapter_id" id="finalChapterId" value="">
+    <input type="hidden" name="duration" id="durationField" value="">
 
     <!-- Left: details -->
     <div class="col-12 col-lg-8">
@@ -124,7 +125,7 @@
             </div>
             <div class="col-6">
               <label class="form-label">Estimated Time</label>
-              <input type="text" class="form-control" name="duration" placeholder="e.g., 2 hours">
+              <input type="text" class="form-control" name="duration_display" placeholder="e.g., 2 hours">
               <div class="form-text">For students</div>
             </div>
           </div>
@@ -211,14 +212,16 @@
 document.addEventListener('DOMContentLoaded', () => {
   // Set minimum datetime to current time
   const dueDateInput = document.querySelector('input[name="due_at"]');
-  const now = new Date();
-  const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-  if (!dueDateInput.value) {
-    // Set default due date to 7 days from now
-    const defaultDueDate = new Date(now);
-    defaultDueDate.setDate(defaultDueDate.getDate() + 7);
-    const defaultDateTime = new Date(defaultDueDate.getTime() - defaultDueDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    dueDateInput.value = defaultDateTime;
+  if (dueDateInput) {
+    const now = new Date();
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    if (!dueDateInput.value) {
+      // Set default due date to 7 days from now
+      const defaultDueDate = new Date(now);
+      defaultDueDate.setDate(defaultDueDate.getDate() + 7);
+      const defaultDateTime = new Date(defaultDueDate.getTime() - defaultDueDate.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      dueDateInput.value = defaultDateTime;
+    }
   }
 
   // Chapter selection handling
@@ -226,17 +229,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const newChapterSection = document.getElementById('newChapterSection');
   const finalChapterId = document.getElementById('finalChapterId');
   
-  if (chapterSelect && newChapterSection) {
+  if (chapterSelect && newChapterSection && finalChapterId) {
     chapterSelect.addEventListener('change', function() {
       if (this.value === 'new') {
         newChapterSection.classList.remove('d-none');
         // Make new chapter title required
-        document.querySelector('input[name="new_chapter_title"]').required = true;
+        const newChapterTitleInput = document.querySelector('input[name="new_chapter_title"]');
+        if (newChapterTitleInput) newChapterTitleInput.required = true;
         finalChapterId.value = ''; // Clear for new chapter
       } else {
         newChapterSection.classList.add('d-none');
         // Remove required from new chapter title
-        document.querySelector('input[name="new_chapter_title"]').required = false;
+        const newChapterTitleInput = document.querySelector('input[name="new_chapter_title"]');
+        if (newChapterTitleInput) newChapterTitleInput.required = false;
         finalChapterId.value = this.value; // Set selected chapter_id
       }
     });
@@ -248,101 +253,129 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Form submission handler
-  document.getElementById('assignmentForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const selectedChapter = document.getElementById('chapterSelect').value;
-    const finalChapterId = document.getElementById('finalChapterId');
-    const titleInput = document.querySelector('input[name="title"]');
-    const instructionsInput = document.querySelector('textarea[name="instructions"]');
-    
-    console.log('=== ASSIGNMENT FORM SUBMISSION ===');
-    console.log('Selected chapter:', selectedChapter);
-    console.log('Final chapter ID:', finalChapterId.value);
-    console.log('Assignment title:', titleInput.value);
-    console.log('Instructions length:', instructionsInput.value.length);
-    
-    // Validate basic required fields
-    if (!selectedChapter || selectedChapter === '') {
-      alert('Please select a chapter');
-      chapterSelect.focus();
-      return;
-    }
-    
-    if (!titleInput.value.trim()) {
-      alert('Please enter an assignment title');
-      titleInput.focus();
-      return;
-    }
-    
-    if (!instructionsInput.value.trim()) {
-      alert('Please enter assignment instructions');
-      instructionsInput.focus();
-      return;
-    }
-    
-    // Validate due date if set
-    const dueDateValue = dueDateInput.value;
-    if (dueDateValue) {
-      const dueDate = new Date(dueDateValue);
-      const now = new Date();
-      if (dueDate < now) {
-        if (!confirm('The due date is in the past. Do you want to continue?')) {
-          dueDateInput.focus();
-          return;
-        }
-      }
-    }
-    
-    // If creating a new chapter, validate and create it first
-    if (selectedChapter === 'new') {
-      const newChapterTitle = document.querySelector('input[name="new_chapter_title"]').value;
+  const assignmentForm = document.getElementById('assignmentForm');
+  if (assignmentForm) {
+    assignmentForm.addEventListener('submit', async function(e) {
+      e.preventDefault();
       
-      if (!newChapterTitle.trim()) {
-        alert('Please enter a chapter title');
-        document.querySelector('input[name="new_chapter_title"]').focus();
+      const selectedChapter = chapterSelect ? chapterSelect.value : '';
+      const finalChapterId = document.getElementById('finalChapterId');
+      const titleInput = document.querySelector('input[name="title"]');
+      const instructionsInput = document.querySelector('textarea[name="instructions"]');
+      
+      console.log('=== ASSIGNMENT FORM SUBMISSION ===');
+      console.log('Selected chapter:', selectedChapter);
+      console.log('Final chapter ID:', finalChapterId ? finalChapterId.value : 'null');
+      console.log('Assignment title:', titleInput ? titleInput.value : 'null');
+      console.log('Instructions length:', instructionsInput ? instructionsInput.value.length : 'null');
+      
+      // Validate basic required fields
+      if (!selectedChapter || selectedChapter === '') {
+        alert('Please select a chapter');
+        if (chapterSelect) chapterSelect.focus();
         return;
       }
       
-      try {
-        console.log('Creating new chapter...');
-        const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]').value || '')}`
-        });
-        
-        const result = await response.json();
-        console.log('Chapter creation response:', result);
-        
-        if (result.ok) {
-          // Set the new chapter ID and submit the form
-          finalChapterId.value = result.chapter_id;
-          console.log('New chapter created with ID:', result.chapter_id);
-          
-          // Now submit the main form
-          await submitMainForm();
-        } else {
-          alert('Error creating chapter: ' + result.error);
-        }
-      } catch (error) {
-        console.error('Error creating chapter:', error);
-        alert('Error creating chapter: ' + error.message);
+      if (!titleInput || !titleInput.value.trim()) {
+        alert('Please enter an assignment title');
+        if (titleInput) titleInput.focus();
+        return;
       }
-    } else {
-      // Submit normally for existing chapter
-      console.log('Submitting with existing chapter ID:', selectedChapter);
-      finalChapterId.value = selectedChapter; // Ensure it's set
-      await submitMainForm();
-    }
-  });
+      
+      if (!instructionsInput || !instructionsInput.value.trim()) {
+        alert('Please enter assignment instructions');
+        if (instructionsInput) instructionsInput.focus();
+        return;
+      }
+      
+      // Validate due date if set
+      if (dueDateInput && dueDateInput.value) {
+        const dueDateValue = dueDateInput.value;
+        const dueDate = new Date(dueDateValue);
+        const now = new Date();
+        if (dueDate < now) {
+          if (!confirm('The due date is in the past. Do you want to continue?')) {
+            dueDateInput.focus();
+            return;
+          }
+        }
+      }
+      
+      // If creating a new chapter, validate and create it first
+      if (selectedChapter === 'new') {
+        const newChapterTitleInput = document.querySelector('input[name="new_chapter_title"]');
+        const newChapterTitle = newChapterTitleInput ? newChapterTitleInput.value : '';
+        
+        if (!newChapterTitle.trim()) {
+          alert('Please enter a chapter title');
+          if (newChapterTitleInput) newChapterTitleInput.focus();
+          return;
+        }
+        
+        try {
+          console.log('Creating new chapter...');
+          const response = await fetch(`/api/unit/{{ unit.id }}/chapter`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `title=${encodeURIComponent(newChapterTitle)}&description=${encodeURIComponent(document.querySelector('textarea[name="new_chapter_description"]')?.value || '')}`
+          });
+          
+          // Check if response is JSON
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text.substring(0, 200));
+            throw new Error('Server returned non-JSON response. Please check server logs.');
+          }
+          
+          const result = await response.json();
+          console.log('Chapter creation response:', result);
+          
+          if (result.ok) {
+            // Set the new chapter ID and submit the form
+            if (finalChapterId) finalChapterId.value = result.chapter_id;
+            console.log('New chapter created with ID:', result.chapter_id);
+            
+            // Now submit the main form
+            await submitMainForm();
+          } else {
+            alert('Error creating chapter: ' + result.error);
+          }
+        } catch (error) {
+          console.error('Error creating chapter:', error);
+          alert('Error creating chapter: ' + error.message);
+        }
+      } else {
+        // Submit normally for existing chapter
+        console.log('Submitting with existing chapter ID:', selectedChapter);
+        if (finalChapterId) finalChapterId.value = selectedChapter; // Ensure it's set
+        await submitMainForm();
+      }
+    });
+  }
 
   // Function to submit the main form and handle response
   async function submitMainForm() {
     const form = document.getElementById('assignmentForm');
+    if (!form) {
+      alert('Form not found');
+      return;
+    }
+    
     const formData = new FormData(form);
+    
+    // Set duration from the duration display field
+    const durationDisplayInput = document.querySelector('input[name="duration_display"]');
+    const durationField = document.getElementById('durationField');
+    if (durationDisplayInput && durationDisplayInput.value && durationField) {
+      durationField.value = durationDisplayInput.value;
+      formData.set('duration', durationDisplayInput.value);
+    } else {
+      // Set a default duration if none provided
+      formData.set('duration', '2 hours');
+    }
     
     // Log what we're sending
     console.log('=== SUBMITTING FORM DATA ===');
@@ -356,21 +389,33 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Show loading state
       const submitBtn = form.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Creating Assignment...';
-      submitBtn.disabled = true;
+      const originalText = submitBtn ? submitBtn.textContent : 'Save';
+      if (submitBtn) {
+        submitBtn.textContent = 'Creating Assignment...';
+        submitBtn.disabled = true;
+      }
       
       const response = await fetch(form.action, {
         method: 'POST',
         body: formData
       });
       
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('Non-JSON response:', text.substring(0, 200));
+        throw new Error('Server returned non-JSON response. Please check server logs.');
+      }
+      
       const result = await response.json();
       console.log('API Response:', result);
       
       // Restore button state
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
       
       if (result.ok) {
         alert(result.message || 'Assignment created successfully!');
@@ -387,8 +432,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Restore button state on error
       const submitBtn = form.querySelector('button[type="submit"]');
-      submitBtn.textContent = 'Save';
-      submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.textContent = 'Save';
+        submitBtn.disabled = false;
+      }
     }
   }
 
@@ -397,16 +444,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleInput = document.querySelector('input[name="title"]');
     const instructionsInput = document.querySelector('textarea[name="instructions"]');
     const contentInput = document.querySelector('textarea[name="content"]');
+    const durationDisplayInput = document.querySelector('input[name="duration_display"]');
     
     // Only fill if empty
-    if (!titleInput.value) {
+    if (titleInput && !titleInput.value) {
       titleInput.value = "Research Paper Assignment";
     }
-    if (!instructionsInput.value) {
+    if (instructionsInput && !instructionsInput.value) {
       instructionsInput.value = "Write a 1500-word research paper on a topic of your choice related to course themes.\n\nRequirements:\n- Minimum 5 academic sources\n- APA formatting\n- Abstract and reference list\n- Submit as PDF\n\nGrading Criteria:\n- Research depth (40%)\n- Argument clarity (30%)\n- Writing quality (20%)\n- Formatting (10%)";
     }
-    if (!contentInput.value) {
+    if (contentInput && !contentInput.value) {
       contentInput.value = "By completing this assignment, students will:\n- Develop research and analytical skills\n- Practice academic writing and citation\n- Synthesize course concepts with external research";
+    }
+    if (durationDisplayInput && !durationDisplayInput.value) {
+      durationDisplayInput.value = "2 weeks";
     }
   }, 500);
 });
