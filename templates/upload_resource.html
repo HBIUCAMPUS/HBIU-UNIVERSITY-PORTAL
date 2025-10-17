@@ -85,7 +85,87 @@
         </div>
       </div>
 
-    
+      <!-- NEW: Lecturer Tools (Announcements + Attendance) -->
+      <div class="row mb-4">
+        <!-- Post Announcement -->
+        <div class="col-md-8">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Post Announcement</h5>
+              <p class="text-muted small mb-3">
+                Announcements posted here will appear on the students’ unit page in the **Announcements** section.
+              </p>
+
+              <form method="post" action="{{ url_for('lecturer_add_announcement', unit_id=unit.id) }}">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-4">
+                    <label class="form-label small text-muted">Title (optional)</label>
+                    <input type="text" name="title" class="form-control" placeholder="e.g., Week 3 Update">
+                  </div>
+                  <div class="col-md-8">
+                    <label class="form-label small text-muted">Announcement</label>
+                    <textarea name="body" class="form-control" rows="2" placeholder="Type your announcement..." required></textarea>
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <button type="submit" class="btn btn-primary">Post Announcement</button>
+                </div>
+              </form>
+
+              <hr class="my-4">
+
+              <h6 class="text-muted">Recent Announcements</h6>
+              {% if announcements %}
+                <ul class="list-unstyled mb-0">
+                  {% for a in announcements %}
+                    <li class="mb-2">
+                      <strong>{{ a.title or 'Announcement' }}</strong>
+                      <small class="text-muted"> · {{ a.created_at }}</small>
+                      <div>{{ a.body }}</div>
+                    </li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                <p class="text-muted mb-0">No announcements yet.</p>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Attendance Control -->
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-body">
+              <h5 class="card-title">Attendance Control</h5>
+              <p class="text-muted small mb-3">
+                Open attendance to let students mark themselves present on their unit page.
+              </p>
+
+              <form method="post" action="{{ url_for('toggle_attendance', unit_id=unit.id) }}">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="attendanceSwitch" name="open" value="1"
+                         {% if attendance_open %}checked{% endif %}>
+                  <label class="form-check-label" for="attendanceSwitch">
+                    {% if attendance_open %}
+                      Attendance is <span class="text-success fw-semibold">OPEN</span>
+                    {% else %}
+                      Attendance is <span class="text-danger fw-semibold">CLOSED</span>
+                    {% endif %}
+                  </label>
+                </div>
+                <button type="submit" class="btn btn-success">
+                  {% if attendance_open %}Close Attendance{% else %}Open Attendance{% endif %}
+                </button>
+              </form>
+
+              <div class="mt-3 small text-muted">
+                When open, students see an enabled “Mark Weekly Attendance” button.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- /NEW: Lecturer Tools -->
 
       <!-- Saved Chapters List -->
       <div id="savedChaptersList" class="mb-4">
@@ -120,85 +200,24 @@
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   transition: all 0.3s ease;
 }
-
-.card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.chapter-card {
-  border-left: 4px solid #4e73df;
-}
-
-.exam-card {
-  border-left: 4px solid #28a745;
-}
-
-.item-badge {
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.exam-badge {
-  background: #d4edda;
-  color: #155724;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.current-item {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 6px;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.btn-primary {
-  background-color: #4e73df;
-  border-color: #4e73df;
-}
-
-.btn-primary:hover {
-  background-color: #2e59d9;
-  border-color: #2e59d9;
-}
-
-.btn-success {
-  background-color: #28a745;
-  border-color: #28a745;
-}
-
-.btn-success:hover {
-  background-color: #218838;
-  border-color: #1e7e34;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.border-success {
-  border: 2px solid #28a745 !important;
-}
+.card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+.chapter-card { border-left: 4px solid #4e73df; }
+.exam-card { border-left: 4px solid #28a745; }
+.item-badge { background:#e3f2fd; color:#1976d2; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:500; }
+.exam-badge { background:#d4edda; color:#155724; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:500; }
+.current-item { background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:0.75rem; margin-bottom:0.5rem; }
+.btn-primary { background-color:#4e73df; border-color:#4e73df; }
+.btn-primary:hover { background-color:#2e59d9; border-color:#2e59d9; }
+.btn-success { background-color:#28a745; border-color:#28a745; }
+.btn-success:hover { background-color:#218838; border-color:#1e7e34; }
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
+.border-success { border:2px solid #28a745 !important; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const unitId = {{ unit.id if unit else 0 }};
-  let currentChapter = {
-    title: `Chapter ${1}`,
-    lessons: [],
-    quizzes: [],
-    assignments: []
-  };
+  let currentChapter = { title: `Chapter ${1}`, lessons: [], quizzes: [], assignments: [] };
   let chapterCounter = 1;
 
   const currentChapterItems = document.getElementById('currentChapterItems');
@@ -215,38 +234,40 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSavedChapters();
   loadSavedExams();
 
+  // OPTIONAL: Update button label live as switch toggles (no backend change)
+  const attendanceSwitch = document.getElementById('attendanceSwitch');
+  if (attendanceSwitch) {
+    attendanceSwitch.addEventListener('change', () => {
+      const label = attendanceSwitch.nextElementSibling;
+      if (attendanceSwitch.checked) {
+        label.innerHTML = 'Attendance is <span class="text-success fw-semibold">OPEN</span>';
+      } else {
+        label.innerHTML = 'Attendance is <span class="text-danger fw-semibold">CLOSED</span>';
+      }
+    });
+  }
+
+  // --- existing script below (unchanged) ---
+
   // Save Chapter
-  btnSaveChapter.addEventListener('click', async () => {
+  btnSaveChapter && btnSaveChapter.addEventListener('click', async () => {
     if (currentChapter.lessons.length === 0 && currentChapter.quizzes.length === 0 && currentChapter.assignments.length === 0) {
       alert('Please add at least one lesson, quiz, or assignment before saving the chapter.');
       return;
     }
-
     const chapterTitle = prompt('Enter chapter title:', currentChapter.title) || currentChapter.title;
-    
     try {
-      // Save chapter to server
       const formData = new FormData();
       formData.append('title', chapterTitle);
       formData.append('lessons', JSON.stringify(currentChapter.lessons));
       formData.append('quizzes', JSON.stringify(currentChapter.quizzes));
       formData.append('assignments', JSON.stringify(currentChapter.assignments));
-
-      const res = await fetch(`{{ url_for('api_create_chapter', unit_id=0) }}`.replace('0', unitId), {
-        method: 'POST',
-        body: formData
-      });
-      
+      const res = await fetch(`{{ url_for('api_create_chapter', unit_id=0) }}`.replace('0', unitId), { method: 'POST', body: formData });
       const json = await res.json();
-      
       if (json.ok) {
-        // Reset current chapter
         resetCurrentChapter();
-        // Reload saved chapters
         await loadSavedChapters();
         alert('Chapter saved successfully!');
-        
-        // Check if we should show final exam section (after 10 chapters)
         checkFinalExamEligibility();
       } else {
         alert(json.error || 'Failed to save chapter');
@@ -257,249 +278,103 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // New Chapter
-  btnNewChapter.addEventListener('click', () => {
+  btnNewChapter && btnNewChapter.addEventListener('click', () => {
     if (currentChapter.lessons.length > 0 || currentChapter.quizzes.length > 0 || currentChapter.assignments.length > 0) {
-      if (!confirm('You have unsaved items. Start a new chapter anyway?')) {
-        return;
-      }
+      if (!confirm('You have unsaved items. Start a new chapter anyway?')) return;
     }
     resetCurrentChapter();
   });
 
-  // Function to add item from external pages (call this from your other HTML pages)
   window.addChapterItem = function(item) {
-    if (item.type === 'lesson') {
-      currentChapter.lessons.push(item);
-      addLessonToDisplay(item);
-    } else if (item.type === 'quiz') {
-      currentChapter.quizzes.push(item);
-      addQuizToDisplay(item);
-    } else if (item.type === 'assignment') {
-      currentChapter.assignments.push(item);
-      addAssignmentToDisplay(item);
-    } else if (item.type === 'exam') {
-      // Handle exam separately (not part of a chapter)
-      addExamToDisplay(item);
-      saveExamToServer(item);
-    }
+    if (item.type === 'lesson') { currentChapter.lessons.push(item); addLessonToDisplay(item); }
+    else if (item.type === 'quiz') { currentChapter.quizzes.push(item); addQuizToDisplay(item); }
+    else if (item.type === 'assignment') { currentChapter.assignments.push(item); addAssignmentToDisplay(item); }
+    else if (item.type === 'exam') { addExamToDisplay(item); saveExamToServer(item); }
     updateSaveButton();
   };
 
-  function addLessonToDisplay(lesson) {
-    currentChapterItems.style.display = 'block';
-    const lessonEl = document.createElement('div');
-    lessonEl.className = 'current-item';
-    lessonEl.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <span class="item-badge">Lesson</span>
-          <strong>${escapeHtml(lesson.title)}</strong>
-          ${lesson.duration ? `<small class="text-muted ms-2">${escapeHtml(lesson.duration)}</small>` : ''}
-        </div>
-        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('lesson', ${lesson.id})">×</button>
-      </div>
-      ${lesson.description ? `<div class="mt-1 small text-muted">${escapeHtml(lesson.description)}</div>` : ''}
-    `;
-    lessonList.appendChild(lessonEl);
+  function addLessonToDisplay(l){ currentChapterItems.style.display='block';
+    const el=document.createElement('div'); el.className='current-item';
+    el.innerHTML=`<div class="d-flex justify-content-between align-items-center">
+        <div><span class="item-badge">Lesson</span> <strong>${escapeHtml(l.title)}</strong>
+        ${l.duration?`<small class="text-muted ms-2">${escapeHtml(l.duration)}</small>`:''}</div>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('lesson', ${l.id})">×</button>
+      </div>${l.description?`<div class="mt-1 small text-muted">${escapeHtml(l.description)}</div>`:''}`;
+    lessonList.appendChild(el);
   }
-
-  function addQuizToDisplay(quiz) {
-    currentChapterItems.style.display = 'block';
-    const quizEl = document.createElement('div');
-    quizEl.className = 'current-item';
-    quizEl.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <span class="item-badge">Quiz</span>
-          <strong>${escapeHtml(quiz.title)}</strong>
-          ${quiz.duration ? `<small class="text-muted ms-2">${escapeHtml(quiz.duration)}</small>` : ''}
-        </div>
-        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('quiz', ${quiz.id})">×</button>
-      </div>
-      ${quiz.description ? `<div class="mt-1 small text-muted">${escapeHtml(quiz.description)}</div>` : ''}
-    `;
-    quizList.appendChild(quizEl);
+  function addQuizToDisplay(q){ currentChapterItems.style.display='block';
+    const el=document.createElement('div'); el.className='current-item';
+    el.innerHTML=`<div class="d-flex justify-content-between align-items-center">
+        <div><span class="item-badge">Quiz</span> <strong>${escapeHtml(q.title)}</strong>
+        ${q.duration?`<small class="text-muted ms-2">${escapeHtml(q.duration)}</small>`:''}</div>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('quiz', ${q.id})">×</button>
+      </div>${q.description?`<div class="mt-1 small text-muted">${escapeHtml(q.description)}</div>`:''}`;
+    quizList.appendChild(el);
   }
-
-  function addAssignmentToDisplay(assignment) {
-    currentChapterItems.style.display = 'block';
-    const assignmentEl = document.createElement('div');
-    assignmentEl.className = 'current-item';
-    assignmentEl.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <span class="item-badge">Assignment</span>
-          <strong>${escapeHtml(assignment.title)}</strong>
-          ${assignment.duration ? `<small class="text-muted ms-2">${escapeHtml(assignment.duration)}</small>` : ''}
-        </div>
-        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('assignment', ${assignment.id})">×</button>
-      </div>
-      ${assignment.instructions ? `<div class="mt-1 small text-muted">${escapeHtml(assignment.instructions)}</div>` : ''}
-    `;
-    assignmentList.appendChild(assignmentEl);
+  function addAssignmentToDisplay(a){ currentChapterItems.style.display='block';
+    const el=document.createElement('div'); el.className='current-item';
+    el.innerHTML=`<div class="d-flex justify-content-between align-items-center">
+        <div><span class="item-badge">Assignment</span> <strong>${escapeHtml(a.title)}</strong>
+        ${a.duration?`<small class="text-muted ms-2">${escapeHtml(a.duration)}</small>`:''}</div>
+        <button class="btn btn-sm btn-outline-danger" onclick="removeItem('assignment', ${a.id})">×</button>
+      </div>${a.instructions?`<div class="mt-1 small text-muted">${escapeHtml(a.instructions)}</div>`:''}`;
+    assignmentList.appendChild(el);
   }
-
-  function addExamToDisplay(exam) {
-    const examEl = document.createElement('div');
-    examEl.className = 'card exam-card mb-3';
-    examEl.innerHTML = `
-      <div class="card-body">
-        <h5 class="card-title">
-          <span class="exam-badge">Final Exam</span>
-          ${escapeHtml(exam.title)}
-        </h5>
-        <div class="mt-2">
-          <div class="current-item mb-2">
-            <strong>${escapeHtml(exam.title)}</strong>
-            <div class="small text-muted">
-              ${exam.duration ? `<span class="me-3">Duration: ${escapeHtml(exam.duration)}</span>` : ''}
-              ${exam.total_marks ? `<span class="me-3">Total Marks: ${escapeHtml(exam.total_marks)}</span>` : ''}
-              ${exam.question_count ? `<span>Questions: ${escapeHtml(exam.question_count)}</span>` : ''}
-            </div>
-            ${exam.description ? `<div class="mt-1">${escapeHtml(exam.description)}</div>` : ''}
-          </div>
-        </div>
-      </div>
-    `;
-    savedExamsList.appendChild(examEl);
+  function addExamToDisplay(exam){
+    const el=document.createElement('div'); el.className='card exam-card mb-3';
+    el.innerHTML=`<div class="card-body"><h5 class="card-title"><span class="exam-badge">Final Exam</span> ${escapeHtml(exam.title)}</h5>
+      <div class="mt-2"><div class="current-item mb-2"><strong>${escapeHtml(exam.title)}</strong>
+      <div class="small text-muted">
+        ${exam.duration?`<span class="me-3">Duration: ${escapeHtml(exam.duration)}</span>`:''}
+        ${exam.total_marks?`<span class="me-3">Total Marks: ${escapeHtml(exam.total_marks)}</span>`:''}
+        ${exam.question_count?`<span>Questions: ${escapeHtml(exam.question_count)}</span>`:''}
+      </div>${exam.description?`<div class="mt-1">${escapeHtml(exam.description)}</div>`:''}
+    </div></div></div>`;
+    savedExamsList.appendChild(el);
   }
-
-  async function saveExamToServer(exam) {
-    try {
-      const formData = new FormData();
-      formData.append('title', exam.title);
-      formData.append('instructions', exam.instructions);
-      formData.append('duration', exam.duration);
-      formData.append('total_marks', exam.total_marks);
-      formData.append('questions', JSON.stringify(exam.questions));
-      formData.append('type', 'exam');
-
-      const res = await fetch(`{{ url_for('api_create_exam', unit_id=0) }}`.replace('0', unitId), {
-        method: 'POST',
-        body: formData
-      });
-      
-      const json = await res.json();
-      if (!json.ok) {
-        console.error('Failed to save exam:', json.error);
-      }
-    } catch (error) {
-      console.error('Error saving exam:', error);
-    }
+  async function saveExamToServer(exam){
+    try{
+      const fd=new FormData();
+      fd.append('title', exam.title);
+      fd.append('instructions', exam.instructions);
+      fd.append('duration', exam.duration);
+      fd.append('total_marks', exam.total_marks);
+      fd.append('questions', JSON.stringify(exam.questions));
+      fd.append('type','exam');
+      const res=await fetch(`{{ url_for('api_create_exam', unit_id=0) }}`.replace('0', unitId),{method:'POST',body:fd});
+      const json=await res.json();
+      if(!json.ok){ console.error('Failed to save exam:', json.error); }
+    }catch(e){ console.error('Error saving exam:', e); }
   }
-
-  function removeItem(type, id) {
-    if (type === 'lesson') {
-      currentChapter.lessons = currentChapter.lessons.filter(l => l.id !== id);
-      lessonList.innerHTML = '<h6 class="text-muted">Lessons</h6>';
-      currentChapter.lessons.forEach(addLessonToDisplay);
-    } else if (type === 'quiz') {
-      currentChapter.quizzes = currentChapter.quizzes.filter(q => q.id !== id);
-      quizList.innerHTML = '<h6 class="text-muted">Quizzes</h6>';
-      currentChapter.quizzes.forEach(addQuizToDisplay);
-    } else if (type === 'assignment') {
-      currentChapter.assignments = currentChapter.assignments.filter(a => a.id !== id);
-      assignmentList.innerHTML = '<h6 class="text-muted">Assignments</h6>';
-      currentChapter.assignments.forEach(addAssignmentToDisplay);
-    }
-    
+  function removeItem(type,id){
+    if(type==='lesson'){ currentChapter.lessons=currentChapter.lessons.filter(l=>l.id!==id); lessonList.innerHTML='<h6 class="text-muted">Lessons</h6>'; currentChapter.lessons.forEach(addLessonToDisplay); }
+    else if(type==='quiz'){ currentChapter.quizzes=currentChapter.quizzes.filter(q=>q.id!==id); quizList.innerHTML='<h6 class="text-muted">Quizzes</h6>'; currentChapter.quizzes.forEach(addQuizToDisplay); }
+    else if(type==='assignment'){ currentChapter.assignments=currentChapter.assignments.filter(a=>a.id!==id); assignmentList.innerHTML='<h6 class="text-muted">Assignments</h6>'; currentChapter.assignments.forEach(addAssignmentToDisplay); }
     updateSaveButton();
   }
-
-  function updateSaveButton() {
-    const hasItems = currentChapter.lessons.length > 0 || currentChapter.quizzes.length > 0 || currentChapter.assignments.length > 0;
-    btnSaveChapter.disabled = !hasItems;
-  }
-
-  function resetCurrentChapter() {
-    chapterCounter++;
-    currentChapter = {
-      title: `Chapter ${chapterCounter}`,
-      lessons: [],
-      quizzes: [],
-      assignments: []
-    };
-    
-    lessonList.innerHTML = '<h6 class="text-muted">Lessons</h6>';
-    quizList.innerHTML = '<h6 class="text-muted">Quizzes</h6>';
-    assignmentList.innerHTML = '<h6 class="text-muted">Assignments</h6>';
-    currentChapterItems.style.display = 'none';
-    btnSaveChapter.disabled = true;
-  }
-
-  async function loadSavedChapters() {
-    try {
-      const res = await fetch(`{{ url_for('api_get_curriculum', unit_id=0) }}`.replace('0', unitId));
-      const json = await res.json();
-      
-      if (json.ok) {
-        const chapters = json.chapters || [];
-        savedChaptersList.innerHTML = '';
-        
-        chapters.forEach(chapter => {
-          const chapterEl = document.createElement('div');
-          chapterEl.className = 'card chapter-card mb-3';
-          chapterEl.innerHTML = `
-            <div class="card-body">
-              <h5 class="card-title">+ ${escapeHtml(chapter.title)}</h5>
-              <div class="mt-2">
-                ${(chapter.items || []).map(item => `
-                  <div class="current-item mb-2">
-                    <span class="item-badge">${item.type}</span>
-                    <strong>${escapeHtml(item.title)}</strong>
-                    ${item.duration ? `<small class="text-muted ms-2">${escapeHtml(item.duration)}</small>` : ''}
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          `;
-          savedChaptersList.appendChild(chapterEl);
-        });
-
-        // Check final exam eligibility after loading chapters
+  function updateSaveButton(){ const has= currentChapter.lessons.length||currentChapter.quizzes.length||currentChapter.assignments.length; if(btnSaveChapter) btnSaveChapter.disabled=!has; }
+  function resetCurrentChapter(){ chapterCounter++; currentChapter={title:`Chapter ${chapterCounter}`,lessons:[],quizzes:[],assignments:[]};
+    lessonList.innerHTML='<h6 class="text-muted">Lessons</h6>'; quizList.innerHTML='<h6 class="text-muted">Quizzes</h6>';
+    assignmentList.innerHTML='<h6 class="text-muted">Assignments</h6>'; currentChapterItems.style.display='none'; if(btnSaveChapter) btnSaveChapter.disabled=true; }
+  async function loadSavedChapters(){
+    try{ const res=await fetch(`{{ url_for('api_get_curriculum', unit_id=0) }}`.replace('0', unitId)); const json=await res.json();
+      if(json.ok){ const chapters=json.chapters||[]; savedChaptersList.innerHTML='';
+        chapters.forEach(chapter=>{ const el=document.createElement('div'); el.className='card chapter-card mb-3';
+          el.innerHTML=`<div class="card-body"><h5 class="card-title">+ ${escapeHtml(chapter.title)}</h5>
+            <div class="mt-2">${(chapter.items||[]).map(item=>`<div class="current-item mb-2">
+              <span class="item-badge">${item.type}</span> <strong>${escapeHtml(item.title)}</strong>
+              ${item.duration?`<small class="text-muted ms-2">${escapeHtml(item.duration)}</small>`:''}
+            </div>`).join('')}</div></div>`; savedChaptersList.appendChild(el); });
         checkFinalExamEligibility(chapters.length);
-      }
-    } catch (error) {
-      console.error('Error loading saved chapters:', error);
-    }
+      } }catch(e){ console.error('Error loading saved chapters:', e); }
   }
-
-  async function loadSavedExams() {
-    try {
-      const res = await fetch(`{{ url_for('api_get_exams', unit_id=0) }}`.replace('0', unitId));
-      const json = await res.json();
-      
-      if (json.ok) {
-        const exams = json.exams || [];
-        savedExamsList.innerHTML = '';
-        
-        exams.forEach(exam => {
-          addExamToDisplay(exam);
-        });
-      }
-    } catch (error) {
-      console.error('Error loading saved exams:', error);
-    }
+  async function loadSavedExams(){
+    try{ const res=await fetch(`{{ url_for('api_get_exams', unit_id=0) }}`.replace('0', unitId)); const json=await res.json();
+      if(json.ok){ const exams=json.exams||[]; savedExamsList.innerHTML=''; exams.forEach(addExamToDisplay); } }
+    catch(e){ console.error('Error loading saved exams:', e); }
   }
-
-  function checkFinalExamEligibility(chapterCount = null) {
-    // Count saved chapters or use provided count
-    const savedChapters = document.querySelectorAll('#savedChaptersList .chapter-card');
-    const totalChapters = chapterCount !== null ? chapterCount : savedChapters.length;
-    
-    // Show final exam section after 10 chapters
-    if (totalChapters >= 10) {
-      finalExamSection.style.display = 'block';
-    } else {
-      finalExamSection.style.display = 'none';
-    }
-  }
-
-  function escapeHtml(s) {
-    return (s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-  }
-
-  // Make removeItem function available globally
+  function checkFinalExamEligibility(count=null){ const saved=document.querySelectorAll('#savedChaptersList .chapter-card'); const total=count!==null?count:saved.length; finalExamSection.style.display = (total>=10)?'block':'none'; }
+  function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]); }
   window.removeItem = removeItem;
 });
 </script>
