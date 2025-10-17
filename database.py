@@ -384,6 +384,88 @@ def _create_announcements_and_attendance():
         conn.rollback()
     finally:
         conn.close()
+def get_conn():
+    # If you already have get_db()/get_conn() use that
+    return sqlite3.connect("database.db")  # placeholder
+
+def row_to_dict(cur, row):
+    return {d[0]: row[i] for i, d in enumerate(cur.description)}
+
+def get_learning_item(unit_id, item_id):
+    """
+    Expects a table like learning_items with columns:
+    id, unit_id, chapter_id, type ('lesson'/'quiz'/'assignment'/'exam'),
+    title, content, content_html, instructions, duration, points, total_points,
+    due_at, submission_format, video_url, questions_json (optional)
+    """
+    conn = get_conn()
+    conn.row_factory = None
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT *
+            FROM learning_items
+            WHERE id = ? AND unit_id = ?
+            """, (item_id, unit_id))
+        row = cur.fetchone()
+        if not row:
+            return None
+        data = row_to_dict(cur, row)
+        return data
+    finally:
+        cur.close()
+        conn.close()
+
+def get_learning_item_attachments(item_id):
+    """
+    If you have an attachments table like learning_item_files with:
+    id, item_id, file_name, file_url
+    """
+    conn = get_conn()
+    cur = conn.cursor()
+    files = []
+    try:
+        cur.execute("""
+            SELECT file_name, file_url
+            FROM learning_item_files
+            WHERE item_id = ?
+            ORDER BY id ASC
+        """, (item_id,))
+        for r in cur.fetchall():
+            files.append({"name": r[0], "url": r[1]})
+    except Exception:
+        pass
+    finally:
+        cur.close()
+        conn.close()
+    return files
+
+def parse_quiz_questions(item_row):
+    """
+    Try a few places to find quiz questions:
+    - questions_json column (JSON array)
+    - content column (if you saved JSON there from add_quiz.html's hidden field)
+    """
+    # item_row could be dict from get_learning_item()
+    raw = item_row.get("questions_json") or item_row.get("content") or "[]"
+    try:
+        data = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        # normalize to [{text, options:[{text, correct}], points}]
+        out = []
+        for q in data or []:
+            out.append({
+                "text": q.get("text") if isinstance(q, dict) else str(q),
+                "points": q.get("points", 1) if isinstance(q, dict) else 1,
+                "options": [
+                    {"text": (opt.get("text") if isinstance(opt, dict) else str(opt)),
+                     "value": str(idx),
+                     "correct": bool(opt.get("correct")) if isinstance(opt, dict) else False}
+                    for idx, opt in enumerate((q.get("options") if isinstance(q, dict) else []) or [])
+                ]
+            })
+        return out
+    except Exception:
+        return []
 
 def init_db():
     """Initialize database tables"""
