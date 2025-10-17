@@ -2291,6 +2291,182 @@ def get_attendance_counts(session_id):
         return {'marked': 0, 'total_registered': 0}
     finally:
         conn.close()
+# ==================== ANNOUNCEMENTS & ATTENDANCE (NEW, NON-BREAKING) ====================
+
+def _ensure_announce_attendance_tables():
+    """Create minimal tables used by announcements + attendance toggle (idempotent)."""
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        # Announcements table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS unit_announcements (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER NOT NULL,
+                title TEXT,
+                body TEXT NOT NULL,
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Attendance status table (one row per unit)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS unit_attendance (
+                unit_id INTEGER PRIMARY KEY,
+                is_open BOOLEAN DEFAULT FALSE,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"Warn: ensure tables (announcements/attendance): {e}")
+    finally:
+        conn.close()
+
+
+def add_unit_announcement(unit_id, title, body, created_by=None):
+    """
+    Insert an announcement for a unit.
+    Called by: POST /lecturer/unit/<unit_id>/announcement
+    """
+    _ensure_announce_attendance_tables()
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cur.execute(
+                "INSERT INTO unit_announcements (unit_id, title, body, created_by) VALUES (%s, %s, %s, %s) RETURNING id",
+                (unit_id, title or '', body, created_by)
+            )
+            new_id = cur.fetchone()[0]
+        else:
+            cur.execute(
+                "INSERT INTO unit_announcements (unit_id, title, body, created_by) VALUES (?, ?, ?, ?)",
+                (unit_id, title or '', body, created_by)
+            )
+            new_id = cur.lastrowid
+        conn.commit()
+        return new_id
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"Error add_unit_announcement: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def get_unit_announcements(unit_id, limit=50):
+    """
+    Fetch announcements for a unit (most recent first).
+    Used by templates (e.g., unit_detail).
+    """
+    _ensure_announce_attendance_tables()
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cur.execute(
+                "SELECT id, unit_id, title, body, created_by, created_at "
+                "FROM unit_announcements WHERE unit_id = %s "
+                "ORDER BY created_at DESC LIMIT %s",
+                (unit_id, limit)
+            )
+        else:
+            cur.execute(
+                "SELECT id, unit_id, title, body, created_by, created_at "
+                "FROM unit_announcements WHERE unit_id = ? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (unit_id, limit)
+            )
+        rows = cur.fetchall()
+        out = []
+        for r in rows:
+            if hasattr(r, 'keys'):
+                d = dict(r)
+            else:
+                d = {
+                    'id': r[0], 'unit_id': r[1], 'title': r[2],
+                    'body': r[3], 'created_by': r[4] if len(r) > 4 else None,
+                    'created_at': r[5] if len(r) > 5 else None
+                }
+            out.append(d)
+        return out
+    except Exception as e:
+        print(f"Error get_unit_announcements: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def set_unit_attendance_open(unit_id, is_open: bool):
+    """
+    Open/close attendance for a unit (upsert).
+    Called by: POST /lecturer/unit/<unit_id>/attendance-toggle
+    """
+    _ensure_announce_attendance_tables()
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            # PostgreSQL upsert
+            cur.execute("""
+                INSERT INTO unit_attendance (unit_id, is_open, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (unit_id)
+                DO UPDATE SET is_open = EXCLUDED.is_open, updated_at = NOW()
+            """, (unit_id, bool(is_open)))
+        else:
+            # SQLite upsert via INSERT OR REPLACE; need current timestamp
+            cur.execute("""
+                INSERT OR REPLACE INTO unit_attendance (unit_id, is_open, updated_at)
+                VALUES (?, ?, datetime('now'))
+            """, (unit_id, 1 if is_open else 0))
+        conn.commit()
+        return True
+    except Exception as e:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        print(f"Error set_unit_attendance_open: {e}")
+        return False
+    finally:
+        conn.close()
+
+
+def is_unit_attendance_open(unit_id) -> bool:
+    """
+    Helper to read current attendance state for a unit.
+    """
+    _ensure_announce_attendance_tables()
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        if os.environ.get('DATABASE_URL'):
+            cur.execute("SELECT is_open FROM unit_attendance WHERE unit_id = %s", (unit_id,))
+        else:
+            cur.execute("SELECT is_open FROM unit_attendance WHERE unit_id = ?", (unit_id,))
+        row = cur.fetchone()
+        if not row:
+            return False
+        val = row[0] if not hasattr(row, 'keys') else row['is_open']
+        # Some drivers return 't'/'f' for booleans; normalize
+        if isinstance(val, str):
+            return val.lower() in ('1', 't', 'true', 'yes')
+        return bool(val)
+    except Exception as e:
+        print(f"Error is_unit_attendance_open: {e}")
+        return False
+    finally:
+        conn.close()
+
 
 def get_attendance_status_for_student(unit_id, student_id):
     """
