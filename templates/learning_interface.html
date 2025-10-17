@@ -1,3 +1,4 @@
+{# templates/learning_interface.html #}
 {% extends "base.html" %}
 {% block content %}
 <div class="row">
@@ -24,21 +25,20 @@
                 {% endif %}
               </h6>
               <button class="btn btn-sm btn-link toggle-chapter" onclick="toggleChapter(this)">
-                <i class="fas fa-chevron-down"></i>
+                <i class="fas fa-chevron-right"></i>
               </button>
             </div>
 
             <div class="chapter-content mt-2 ms-3" style="display: none;">
               {% set chapter_items = [] %}
+              {% if chapter is mapping %}
+                {% if chapter.items is defined and chapter.items is iterable and chapter.items is not string %}
+                  {% set chapter_items = chapter.items %}
+                {% elif chapter.get('items') is defined and chapter.get('items') is iterable and chapter.get('items') is not string %}
+                  {% set chapter_items = chapter.get('items', []) %}
+                {% endif %}
+              {% endif %}
 
-              {# Safe way to get items (avoid collision with dict.items method) #}
-                  {% set chapter_items = [] %}
-                  {% if chapter is mapping and 'items' in chapter %}
-                    {% set chapter_items = chapter['items'] if chapter['items'] is iterable and chapter['items'] is not string else [] %}
-                  {% endif %}
-
-              
-       
               {% if chapter_items and chapter_items|length > 0 %}
                 {% for item in chapter_items %}
                   {% set is_exam = false %}
@@ -48,7 +48,6 @@
                   {% set item_completed = false %}
                   {% set item_duration = "" %}
                   
-                  {# Handle both dict and tuple items #}
                   {% if item is mapping %}
                     {% set is_exam = (item.type == 'exam') if item.type is defined else false %}
                     {% set item_id = item.id if item.id is defined else 0 %}
@@ -57,7 +56,6 @@
                     {% set item_completed = item.completed if item.completed is defined else false %}
                     {% set item_duration = item.duration if item.duration is defined else "" %}
                   {% elif item is iterable and item is not string %}
-                    {# Assuming tuple structure: (id, title, content, order_index, type, ...) #}
                     {% set is_exam = (item[4] == 'exam') if item|length > 4 else false %}
                     {% set item_id = item[0] if item|length > 0 else 0 %}
                     {% set item_title = item[1] if item|length > 1 else "Untitled Item" %}
@@ -67,12 +65,12 @@
                   {% endif %}
                   
                   <div
-                    class="d-flex align-items-center mb-2 lesson-item {% if item_completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
+                    class="d-flex align-items-start mb-2 lesson-item {% if item_completed %}text-success{% endif %} {% if is_exam and not exam_unlocked %}text-muted{% endif %}"
                     data-item-id="{{ item_id }}"
                     data-type="{{ item_type }}"
                     data-locked="{{ (is_exam and not exam_unlocked)|int }}"
                     onclick="loadItemContent(this)"
-                    style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease;"
+                    style="cursor: pointer; padding: 8px 12px; border-radius: 6px; transition: all 0.2s ease; border:1px solid transparent;"
                     onmouseover="this.style.backgroundColor='#f8f9fa'" 
                     onmouseout="this.style.backgroundColor='transparent'"
                   >
@@ -84,24 +82,27 @@
                              onclick="event.stopPropagation(); updateItemProgress({{ item_id }}, this.checked, {{ unit.id }})">
                     </div>
 
-                    <small class="flex-grow-1">
-                      {% if is_exam %}
-                        {% if exam_unlocked %}
-                        <i class="fas fa-star text-warning me-1"></i>
-                        <strong>Final Exam</strong>
-                        {% else %}
-                        <i class="fas fa-lock me-1"></i>
-                        <span class="text-muted">Final Exam (Complete all content first)</span>
+                    <div class="flex-grow-1">
+                      <div class="d-flex justify-content-between">
+                        <small>
+                          {% if is_exam %}
+                            {% if exam_unlocked %}
+                            <i class="fas fa-star text-warning me-1"></i>
+                            <strong>Final Exam</strong>
+                            {% else %}
+                            <i class="fas fa-lock me-1"></i>
+                            <span class="text-muted">Final Exam (Complete all content first)</span>
+                            {% endif %}
+                          {% else %}
+                            <i class="fas {% if item_type == 'quiz' %}fa-question-circle text-info{% elif item_type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
+                            <span class="item-title">{{ item_title }}</span>
+                          {% endif %}
+                        </small>
+                        {% if item_duration and not is_exam %}
+                        <small class="text-muted ms-2">{{ item_duration }}</small>
                         {% endif %}
-                      {% else %}
-                        <i class="fas {% if item_type == 'quiz' %}fa-question-circle text-info{% elif item_type == 'assignment' %}fa-tasks text-warning{% else %}fa-play-circle text-primary{% endif %} me-1"></i>
-                        {{ item_title }}
-                      {% endif %}
-                    </small>
-
-                    {% if item_duration and not is_exam %}
-                    <small class="text-muted ms-2">{{ item_duration }}</small>
-                    {% endif %}
+                      </div>
+                    </div>
                   </div>
                 {% endfor %}
               {% else %}
@@ -123,14 +124,6 @@
         <small class="text-muted">
           Your Progress: {{ completed_items }}/{{ total_items }} ({{ progress_percentage }}%)
         </small>
-        {% if not exam_unlocked and chapters|length >= 10 %}
-        <div class="mt-2">
-          <small class="text-warning">
-            <i class="fas fa-info-circle"></i>
-            Complete all items to unlock final exam
-          </small>
-        </div>
-        {% endif %}
       </div>
     </div>
   </div>
@@ -171,13 +164,14 @@
         <div id="lessonContent" class="d-none">
           <div class="row">
             <div class="col-lg-8">
-              <div id="videoContent" class="mb-4">
+              <div id="videoContent" class="mb-4 d-none">
                 <div class="ratio ratio-16x9 mb-3">
                   <iframe id="lessonVideo" src="" frameborder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowfullscreen></iframe>
                 </div>
               </div>
+              <div id="lessonDescription" class="prose"></div>
             </div>
             <div class="col-lg-4">
               <div class="card">
@@ -197,57 +191,60 @@
               </div>
             </div>
           </div>
-          <div id="lessonDescription" class="mt-3"></div>
         </div>
 
         <!-- Quiz Content -->
         <div id="quizContent" class="d-none">
-          <div class="alert alert-info">
+          <div class="alert alert-info d-flex align-items-center">
             <i class="fas fa-info-circle me-2"></i>
             <span id="quizInstructions">Complete the quiz to test your understanding.</span>
           </div>
-          <div id="quizQuestions" class="mb-4"></div>
-          <div class="d-flex justify-content-between align-items-center">
-            <div id="quizProgress" class="text-muted small"></div>
-            <button class="btn btn-success" id="submitQuiz" onclick="submitQuiz()">
-              <i class="fas fa-paper-plane me-1"></i>Submit Quiz
-            </button>
-          </div>
+          <form id="quizForm">
+            <div id="quizQuestions" class="mb-4"></div>
+            <div class="d-flex justify-content-between align-items-center">
+              <div id="quizProgress" class="text-muted small"></div>
+              <button class="btn btn-success" id="submitQuizBtn" type="submit">
+                <i class="fas fa-paper-plane me-1"></i>Submit Quiz
+              </button>
+            </div>
+          </form>
         </div>
 
         <!-- Assignment Content -->
         <div id="assignmentContent" class="d-none">
-          <div class="alert alert-warning">
+          <div class="alert alert-warning d-flex align-items-center">
             <i class="fas fa-exclamation-circle me-2"></i>
-            Make sure to submit before the due date.
+            <div>
+              <div><strong id="assignmentTitleShort">Assignment</strong></div>
+              <small id="assignmentDueMeta" class="text-muted"></small>
+            </div>
           </div>
-          <h6>Assignment Instructions</h6>
-          <div id="assignmentInstructions" class="mb-4 p-3 bg-light rounded"></div>
-          
+
           <div class="row">
-            <div class="col-md-6">
-              <div class="card mb-3">
+            <div class="col-md-6 mb-3">
+              <div class="card">
                 <div class="card-header">
                   <h6 class="mb-0">Submission</h6>
                 </div>
                 <div class="card-body">
-                  <label for="assignmentSubmission" class="form-label">Upload Your Work</label>
-                  <input type="file" class="form-control mb-2" id="assignmentSubmission" multiple>
-                  <textarea class="form-control mb-2" id="assignmentComments" placeholder="Add any comments (optional)" rows="3"></textarea>
-                  <button class="btn btn-success w-100" id="submitAssignment" onclick="submitAssignment()">
-                    <i class="fas fa-upload me-1"></i>Submit Assignment
-                  </button>
+                  <form id="assignmentForm">
+                    <label for="assignmentFiles" class="form-label">Upload Your Work</label>
+                    <input type="file" class="form-control mb-2" id="assignmentFiles" name="files" multiple>
+                    <textarea class="form-control mb-2" id="assignmentComments" name="comments" placeholder="Add any comments (optional)" rows="3"></textarea>
+                    <button class="btn btn-success w-100" id="submitAssignmentBtn" type="submit">
+                      <i class="fas fa-upload me-1"></i>Submit Assignment
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
-            <div class="col-md-6">
+
+            <div class="col-md-6 mb-3">
               <div class="card">
                 <div class="card-header">
                   <h6 class="mb-0">Assignment Details</h6>
                 </div>
-                <div class="card-body">
-                  <div id="assignmentDetails"></div>
-                </div>
+                <div class="card-body" id="assignmentDetails"></div>
               </div>
             </div>
           </div>
@@ -274,21 +271,6 @@
           <i class="fas fa-book-open fa-4x text-muted mb-3"></i>
           <h4 class="text-muted">Welcome to Your Learning Journey</h4>
           <p class="text-muted mb-4">Select a lesson, quiz, or assignment from the sidebar to begin learning.</p>
-          <div class="row justify-content-center">
-            <div class="col-md-8">
-              <div class="card">
-                <div class="card-body">
-                  <h6>Getting Started</h6>
-                  <ul class="list-unstyled text-start">
-                    <li><i class="fas fa-play-circle text-primary me-2"></i>Start with lessons to learn new concepts</li>
-                    <li><i class="fas fa-question-circle text-info me-2"></i>Take quizzes to test your knowledge</li>
-                    <li><i class="fas fa-tasks text-warning me-2"></i>Complete assignments to apply what you've learned</li>
-                    <li><i class="fas fa-star text-warning me-2"></i>Final exam unlocks after completing all content</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Completion Section -->
@@ -307,489 +289,356 @@
 </div>
 
 <style>
-.sticky-top {
-  position: -webkit-sticky;
-  position: sticky;
-  z-index: 1020;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-.chapter-item {
-  border-left: 3px solid transparent;
-  transition: all 0.3s ease;
-}
-.chapter-item:hover {
-  border-left-color: #4e73df;
-  background: #f8f9fa;
-}
-.chapter-title {
-  font-weight: 600;
-  color: #2c3e50;
-  cursor: pointer;
-}
-.lesson-item {
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  border: 1px solid transparent;
-}
-.lesson-item:hover {
-  background: #e9ecef;
-  border-color: #dee2e6;
-}
-.lesson-item.text-success {
-  background: #d1edff;
-  border-color: #b8daff;
-}
-.lesson-item.active {
-  background-color: #e3f2fd !important;
-  border-color: #2196f3 !important;
-}
-.completion-checkbox:checked {
-  background-color: #28a745;
-  border-color: #28a745;
-}
-.ratio-16x9 {
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-}
-#welcomeContent {
-  min-height: 400px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.quiz-question {
-  border-left: 4px solid #4e73df;
-  padding-left: 1rem;
-  margin-bottom: 1.5rem;
-}
-.assignment-detail {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid #eee;
-}
-.prose {
-  line-height: 1.6;
-}
-.prose p {
-  margin-bottom: 1rem;
-}
+.sticky-top{position:-webkit-sticky;position:sticky;z-index:1020;max-height:80vh;overflow-y:auto}
+.chapter-item{border-left:3px solid transparent;transition:all .3s ease}
+.chapter-item:hover{border-left-color:#4e73df;background:#f8f9fa}
+.chapter-title{font-weight:600;color:#2c3e50;cursor:pointer}
+.lesson-item{padding:8px 12px;border-radius:6px;transition:all .2s ease;border:1px solid transparent}
+.lesson-item:hover{background:#e9ecef;border-color:#dee2e6}
+.lesson-item.active{background-color:#e3f2fd!important;border-color:#2196f3!important}
+.completion-checkbox:checked{background-color:#28a745;border-color:#28a745}
+.ratio-16x9{border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+.quiz-question{border-left:4px solid #4e73df;padding-left:1rem;margin-bottom:1.25rem}
+.assignment-detail{padding:.5rem 0;border-bottom:1px solid #eee}
+.prose{line-height:1.6}
+.prose p{margin-bottom:1rem}
 </style>
 
 <script>
-// Global variables
 let currentItem = null;
 let allItems = [];
+const UNIT_ID = {{ unit.id }};
 
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', function() {
-  // Collect all items from the DOM
-  allItems = [];
-  
-  document.querySelectorAll('.lesson-item').forEach(itemEl => {
-    const item = {
-      id: parseInt(itemEl.dataset.itemId),
-      type: itemEl.dataset.type,
-      title: itemEl.querySelector('.flex-grow-1').textContent.trim(),
-      completed: itemEl.classList.contains('text-success'),
-      locked: itemEl.dataset.locked === '1'
-    };
-    allItems.push(item);
-  });
+document.addEventListener('DOMContentLoaded', () => {
+  // Build flat list for navigation
+  allItems = Array.from(document.querySelectorAll('.lesson-item')).map(el => ({
+    id: Number(el.dataset.itemId),
+    type: el.dataset.type,
+    title: (el.querySelector('.item-title')?.textContent || '').trim() || 'Untitled',
+    locked: el.dataset.locked === '1'
+  }));
 
-  // Expand first chapter by default if it has items
+  // Auto-expand first chapter that has items
   const firstChapter = document.querySelector('.chapter-item');
-  if (firstChapter) {
-    const chapterContent = firstChapter.querySelector('.chapter-content');
-    if (chapterContent && chapterContent.children.length > 0) {
-      toggleChapter(firstChapter.querySelector('.chapter-title'));
-    }
-  }
+  if (firstChapter) toggleChapter(firstChapter.querySelector('.chapter-title'));
 });
 
-// Toggle chapter expansion
-function toggleChapter(element) {
-  const chapterItem = element.closest('.chapter-item');
-  const chapterContent = chapterItem.querySelector('.chapter-content');
-  const toggleIcon = chapterItem.querySelector('.toggle-chapter i');
-  
-  if (chapterContent.style.display === 'none') {
-    chapterContent.style.display = 'block';
-    toggleIcon.className = 'fas fa-chevron-down';
-  } else {
-    chapterContent.style.display = 'none';
-    toggleIcon.className = 'fas fa-chevron-right';
-  }
+function toggleChapter(el){
+  const wrap = el.closest('.chapter-item');
+  const body = wrap.querySelector('.chapter-content');
+  const icon = wrap.querySelector('.toggle-chapter i');
+  const open = body.style.display !== 'block';
+  body.style.display = open ? 'block' : 'none';
+  icon.className = open ? 'fas fa-chevron-down' : 'fas fa-chevron-right';
 }
 
-// Load item content into main window
-function loadItemContent(element) {
-  const itemId = parseInt(element.dataset.itemId);
+// ===== Item Loading =====
+async function loadItemContent(element){
+  const itemId = Number(element.dataset.itemId);
   const itemType = element.dataset.type;
-  const itemTitle = element.querySelector('.flex-grow-1').textContent.trim();
-  const itemCompleted = element.classList.contains('text-success');
-  const itemLocked = element.dataset.locked === '1';
-  
-  if (itemType === 'exam' && itemLocked) {
+  const locked = element.dataset.locked === '1';
+  const title = (element.querySelector('.item-title')?.textContent || 'Item').trim();
+
+  if (itemType === 'exam' && locked){
     showNotification('Complete all content to unlock the final exam!', 'warning');
     return;
   }
 
-  currentItem = {
-    id: itemId,
-    type: itemType,
-    title: itemTitle,
-    completed: itemCompleted,
-    locked: itemLocked
-  };
-  
-  // Hide all content sections
-  document.getElementById('welcomeContent').classList.add('d-none');
-  document.getElementById('lessonContent').classList.add('d-none');
-  document.getElementById('quizContent').classList.add('d-none');
-  document.getElementById('assignmentContent').classList.add('d-none');
-  document.getElementById('examContent').classList.add('d-none');
-  
-  // Update title
-  document.getElementById('contentTitle').textContent = itemTitle;
-  
-  // Show completion section for non-exam items
-  if (itemType !== 'exam') {
-    document.getElementById('completionSection').classList.remove('d-none');
-    document.getElementById('markComplete').checked = itemCompleted;
-  } else {
-    document.getElementById('completionSection').classList.add('d-none');
-  }
-  
-  // Load specific content based on type
-  switch(itemType) {
-    case 'lesson':
-      loadLesson(currentItem);
-      break;
-    case 'quiz':
-      loadQuiz(currentItem);
-      break;
-    case 'assignment':
-      loadAssignment(currentItem);
-      break;
-    case 'exam':
-      loadExam(currentItem);
-      break;
-  }
-  
-  // Update navigation buttons
-  updateNavigation();
-  
-  // Highlight active item in sidebar
   highlightActiveItem(itemId);
+  currentItem = { id: itemId, type: itemType, title, locked };
+
+  setTitle(title);
+  hideAllSections();
+  showCompletion(itemType !== 'exam');
+  setNavEnabled(true);
+
+  // Fetch details
+  let data = null;
+  try {
+    const res = await fetch(`/api/unit/${UNIT_ID}/item/${itemId}`);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) throw new Error('Non-JSON response');
+    data = await res.json();
+  } catch (e){
+    console.warn('Detail fetch failed:', e);
+  }
+
+  const detail = (data && data.ok && data.item) ? data.item : { type: itemType, title };
+
+  switch((detail.type || itemType)){
+    case 'lesson': renderLesson(detail); break;
+    case 'quiz': renderQuiz(detail); break;
+    case 'assignment': renderAssignment(detail); break;
+    case 'exam': document.getElementById('examContent').classList.remove('d-none'); break;
+    default: renderLesson(detail);
+  }
 }
 
-// Load lesson content
-function loadLesson(item) {
-  const content = document.getElementById('lessonContent');
-  content.classList.remove('d-none');
-  
-  // Video content
-  const videoContent = document.getElementById('videoContent');
-  videoContent.classList.add('d-none'); // Hide video for now
-  
-  // Lesson description
-  const descriptionEl = document.getElementById('lessonDescription');
-  descriptionEl.innerHTML = `
-    <div class="prose">
-      <h6>About this lesson</h6>
-      <p>This lesson covers important concepts related to "${item.title}".</p>
-      <p>In a real implementation, this content would come from your database.</p>
+// ===== Rendering helpers =====
+function setTitle(t){ document.getElementById('contentTitle').textContent = t || 'Item'; }
+function hideAllSections(){
+  ['welcomeContent','lessonContent','quizContent','assignmentContent','examContent'].forEach(id=>{
+    document.getElementById(id).classList.add('d-none');
+  });
+}
+function showCompletion(show){
+  const sec = document.getElementById('completionSection');
+  sec.classList.toggle('d-none', !show);
+  if (show) {
+    // sync checkbox state from sidebar
+    const itemEl = document.querySelector(`.lesson-item[data-item-id="${currentItem.id}"]`);
+    document.getElementById('markComplete').checked = itemEl?.classList.contains('text-success') || false;
+  }
+}
+function setNavEnabled(enabled){
+  document.getElementById('prevBtn').disabled = !enabled;
+  document.getElementById('nextBtn').disabled = !enabled;
+}
+function highlightActiveItem(itemId){
+  document.querySelectorAll('.lesson-item').forEach(el=>el.classList.remove('active'));
+  const el = document.querySelector(`.lesson-item[data-item-id="${itemId}"]`);
+  if (el) el.classList.add('active');
+}
+
+// LESSON
+function renderLesson(d){
+  const wrap = document.getElementById('lessonContent');
+  wrap.classList.remove('d-none');
+
+  // Video (url or embed)
+  const vwrap = document.getElementById('videoContent');
+  const iframe = document.getElementById('lessonVideo');
+  const vurl = d.video_url || '';
+  if (vurl){
+    iframe.src = vurl;
+    vwrap.classList.remove('d-none');
+  } else {
+    iframe.src = '';
+    vwrap.classList.add('d-none');
+  }
+
+  // Description / content (HTML allowed; fallback to text)
+  const desc = document.getElementById('lessonDescription');
+  const html = d.content_html || d.content || '';
+  desc.innerHTML = html ? html : `
+    <div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>
+      Lesson content will appear here once added.
+    </div>
+  `;
+
+  // Materials list
+  const mat = document.getElementById('lessonMaterials');
+  const files = Array.isArray(d.attachments) ? d.attachments : [];
+  if (files.length){
+    mat.innerHTML = files.map(f => `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small text-truncate" title="${f.name || 'File'}"><i class="fas fa-file me-2"></i>${f.name || 'File'}</span>
+        <a class="btn btn-sm btn-outline-primary" href="${f.url || '#'}" target="_blank">Download</a>
+      </div>
+    `).join('');
+  } else {
+    mat.innerHTML = `<p class="text-muted small mb-0">No materials uploaded yet.</p>`;
+  }
+}
+
+// QUIZ
+function renderQuiz(d){
+  const panel = document.getElementById('quizContent');
+  panel.classList.remove('d-none');
+
+  document.getElementById('quizInstructions').textContent =
+    d.instructions || 'Complete the quiz to test your understanding.';
+
+  const questions = Array.isArray(d.questions) ? d.questions : [];
+  const qWrap = document.getElementById('quizQuestions');
+  if (!questions.length){
+    qWrap.innerHTML = `
       <div class="alert alert-info">
-        <i class="fas fa-info-circle me-2"></i>
-        <strong>Note:</strong> This is demo content. Actual lesson materials would be loaded from the database.
-      </div>
-    </div>
-  `;
-  
-  // Lesson materials
-  const materialsEl = document.getElementById('lessonMaterials');
-  materialsEl.innerHTML = `
-    <p class="text-muted small">Lesson materials and resources would be displayed here.</p>
-    <div class="d-grid gap-2">
-      <button class="btn btn-outline-primary btn-sm" onclick="showNotification('Downloading lesson materials...', 'info')">
-        <i class="fas fa-download me-1"></i>Download Notes
-      </button>
-      <button class="btn btn-outline-secondary btn-sm" onclick="showNotification('Opening supplementary materials...', 'info')">
-        <i class="fas fa-external-link-alt me-1"></i>Additional Resources
-      </button>
-    </div>
-  `;
-}
+        <i class="fas fa-info-circle me-2"></i>No questions yet. The lecturer hasn’t added any.
+      </div>`;
+  } else {
+    qWrap.innerHTML = questions.map((q, i) => {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      const name = `q_${i}`;
+      return `
+        <div class="quiz-question">
+          <h6>${i+1}. ${escapeHTML(q.text || 'Question')}</h6>
+          <div class="options">
+            ${opts.map((op, j)=>`
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="${name}" id="${name}_${j}" value="${escapeHTML(op.value ?? String(j))}">
+                <label class="form-check-label" for="${name}_${j}">${escapeHTML(op.text || op)}</label>
+              </div>`).join('')}
+          </div>
+        </div>`;
+    }).join('');
+  }
 
-// Load quiz content
-function loadQuiz(item) {
-  const content = document.getElementById('quizContent');
-  content.classList.remove('d-none');
-  
-  // Quiz instructions
-  document.getElementById('quizInstructions').textContent = 
-    'Complete the quiz to test your understanding of the material.';
-  
-  // Quiz questions
-  const questionsEl = document.getElementById('quizQuestions');
-  questionsEl.innerHTML = `
-    <div class="quiz-question">
-      <h6>1. What is the main topic of this quiz?</h6>
-      <div class="options">
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="question_1" id="q_1_0">
-          <label class="form-check-label" for="q_1_0">Option A</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="question_1" id="q_1_1">
-          <label class="form-check-label" for="q_1_1">Option B</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="question_1" id="q_1_2">
-          <label class="form-check-label" for="q_1_2">Option C</label>
-        </div>
-      </div>
-    </div>
-    <div class="quiz-question">
-      <h6>2. Which of the following statements is true?</h6>
-      <div class="options">
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="question_2" id="q_2_0">
-          <label class="form-check-label" for="q_2_0">Statement A is correct</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="question_2" id="q_2_1">
-          <label class="form-check-label" for="q_2_1">Statement B is correct</label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="question_2" id="q_2_2">
-          <label class="form-check-label" for="q_2_2">Both statements are correct</label>
-        </div>
-      </div>
-    </div>
-    <div class="alert alert-info">
-      <i class="fas fa-info-circle me-2"></i>
-      <strong>Note:</strong> This is demo quiz content. Actual quiz questions would be loaded from the database.
-    </div>
-  `;
-}
+  // Progress text
+  document.getElementById('quizProgress').textContent = d.total_points
+    ? `Total points: ${d.total_points}`
+    : '';
 
-// Load assignment content
-function loadAssignment(item) {
-  const content = document.getElementById('assignmentContent');
-  content.classList.remove('d-none');
-  
-  // Assignment instructions
-  const instructionsEl = document.getElementById('assignmentInstructions');
-  instructionsEl.innerHTML = `
-    <div class="prose">
-      <h6>Assignment: ${item.title}</h6>
-      <p>Complete this assignment to demonstrate your understanding of the course material.</p>
-      <p><strong>Requirements:</strong></p>
-      <ul>
-        <li>Submit your work in PDF format</li>
-        <li>Include all relevant calculations and explanations</li>
-        <li>Cite any references used</li>
-        <li>Minimum 1000 words</li>
-        <li>Include diagrams or charts where applicable</li>
-      </ul>
-      <p><strong>Grading Criteria:</strong></p>
-      <ul>
-        <li>Content accuracy (40%)</li>
-        <li>Clarity of explanation (30%)</li>
-        <li>Research depth (20%)</li>
-        <li>Formatting and presentation (10%)</li>
-      </ul>
-    </div>
-  `;
-  
-  // Assignment details
-  const detailsEl = document.getElementById('assignmentDetails');
-  detailsEl.innerHTML = `
-    <div class="assignment-details">
-      <p><strong>Due Date:</strong> One week from now</p>
-      <p><strong>Points:</strong> 100</p>
-      <p><strong>Submission Format:</strong> PDF</p>
-      <p><strong>Word Count:</strong> 1000+ words</p>
-      <p><strong>References:</strong> Minimum 5 academic sources</p>
-    </div>
-    <div class="alert alert-info mt-3">
-      <i class="fas fa-info-circle me-2"></i>
-      <strong>Note:</strong> This is demo assignment content. Actual assignment details would be loaded from the database.
-    </div>
-  `;
-}
+  // Submit handler
+  const form = document.getElementById('quizForm');
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    const payload = {
+      unit_id: UNIT_ID,
+      item_id: currentItem.id,
+      answers: []
+    };
+    const qs = qWrap.querySelectorAll('.quiz-question');
+    qs.forEach((qEl, idx)=>{
+      const checked = qEl.querySelector(`input[name="q_${idx}"]:checked`);
+      payload.answers.push({ index: idx, value: checked ? checked.value : null });
+    });
 
-// Load exam content
-function loadExam(item) {
-  const content = document.getElementById('examContent');
-  content.classList.remove('d-none');
-}
-
-// Update navigation buttons
-function updateNavigation() {
-  if (!currentItem) return;
-  
-  const currentIndex = allItems.findIndex(item => item.id === currentItem.id);
-  const prevBtn = document.getElementById('prevBtn');
-  const nextBtn = document.getElementById('nextBtn');
-  
-  prevBtn.disabled = currentIndex <= 0;
-  nextBtn.disabled = currentIndex >= allItems.length - 1;
-}
-
-// Navigate between items
-function navigateItem(direction) {
-  if (!currentItem) return;
-  
-  const currentIndex = allItems.findIndex(item => item.id === currentItem.id);
-  const newIndex = currentIndex + direction;
-  
-  if (newIndex >= 0 && newIndex < allItems.length) {
-    const nextItem = allItems[newIndex];
-    
-    // Skip locked exams
-    if (nextItem.type === 'exam' && nextItem.locked) {
-      if (direction > 0) {
-        navigateItem(1); // Skip to next
+    const submitUrl = d.submit_url || `/api/unit/${UNIT_ID}/quiz/${currentItem.id}/submit`;
+    try{
+      const res = await fetch(submitUrl, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await safeJson(res);
+      if (result && (result.ok || result.success)){
+        showNotification(result.message || 'Quiz submitted successfully!', 'success');
       } else {
-        navigateItem(-1); // Skip to previous
+        showNotification((result && (result.error || result.message)) || 'Failed to submit quiz.', 'danger');
       }
-      return;
+    }catch(err){
+      showNotification('Network error submitting quiz.', 'danger');
     }
-    
-    // Find and click the next item in the sidebar
-    const nextItemElement = document.querySelector(`.lesson-item[data-item-id="${nextItem.id}"]`);
-    if (nextItemElement) {
-      loadItemContent(nextItemElement);
+  };
+}
+
+// ASSIGNMENT
+function renderAssignment(d){
+  const panel = document.getElementById('assignmentContent');
+  panel.classList.remove('d-none');
+
+  document.getElementById('assignmentTitleShort').textContent = d.title || 'Assignment';
+  document.getElementById('assignmentDueMeta').textContent = d.due_at ? `Due: ${d.due_at}` : '';
+
+  // Instructions/details
+  const details = document.getElementById('assignmentDetails');
+  const rows = [];
+  if (d.points) rows.push(row('Points', d.points));
+  if (d.submission_format) rows.push(row('Submission', d.submission_format));
+  if (d.passing_score) rows.push(row('Passing Score', d.passing_score + '%'));
+  if (Array.isArray(d.attachments) && d.attachments.length){
+    rows.push(`<div class="assignment-detail"><strong>Files:</strong><div class="mt-2">${d.attachments.map(f=>`
+      <a href="${f.url || '#'}" class="btn btn-sm btn-outline-primary me-2 mb-2" target="_blank">
+        <i class="fas fa-file me-1"></i>${escapeHTML(f.name || 'File')}
+      </a>`).join('')}</div></div>`);
+  }
+  if (d.instructions){
+    rows.unshift(`<div class="assignment-detail"><strong>Instructions</strong><div class="mt-2">${d.instructions}</div></div>`);
+  }
+  details.innerHTML = rows.join('') || `<p class="text-muted mb-0">No details available.</p>`;
+
+  // Submit handler
+  const form = document.getElementById('assignmentForm');
+  form.onsubmit = async (e)=>{
+    e.preventDefault();
+    const fd = new FormData();
+    const files = document.getElementById('assignmentFiles').files;
+    for (const f of files) fd.append('files', f);
+    fd.append('comments', document.getElementById('assignmentComments').value || '');
+    fd.append('unit_id', String(UNIT_ID));
+    fd.append('item_id', String(currentItem.id));
+
+    const submitUrl = d.submit_url || `/api/unit/${UNIT_ID}/assignment/${currentItem.id}/submit`;
+    try{
+      const res = await fetch(submitUrl, { method:'POST', body: fd });
+      const result = await safeJson(res);
+      if (result && (result.ok || result.success)){
+        showNotification(result.message || 'Assignment submitted successfully!', 'success');
+      } else {
+        showNotification((result && (result.error || result.message)) || 'Failed to submit assignment.', 'danger');
+      }
+    }catch(err){
+      showNotification('Network error submitting assignment.', 'danger');
     }
+  };
+
+  function row(label, value){
+    return `<div class="assignment-detail"><strong>${escapeHTML(label)}:</strong> <span class="text-muted">${escapeHTML(String(value))}</span></div>`;
   }
 }
 
-// Mark current item as complete
-function markCurrentItemComplete(completed) {
+// ===== Navigation & Progress =====
+function navigateItem(direction){
+  if (!currentItem) return;
+  const idx = allItems.findIndex(i=>i.id===currentItem.id);
+  let next = idx + direction;
+
+  while (next >=0 && next < allItems.length){
+    const candidate = allItems[next];
+    // Skip locked exams
+    if (candidate.type === 'exam' && candidate.locked){
+      next += direction;
+      continue;
+    }
+    const el = document.querySelector(`.lesson-item[data-item-id="${candidate.id}"]`);
+    if (el){ loadItemContent(el); }
+    break;
+  }
+}
+
+function markCurrentItemComplete(completed){
   if (!currentItem || currentItem.type === 'exam') return;
-  
-  updateItemProgress(currentItem.id, completed, {{ unit.id }});
+  updateItemProgress(currentItem.id, completed, UNIT_ID);
 }
 
-// Update item progress
-function updateItemProgress(itemId, completed, unitId) {
+function updateItemProgress(itemId, completed, unitId){
   fetch("{{ url_for('update_progress') }}", {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      unit_id: unitId,
-      item_id: itemId,
-      completed: completed
-    })
+    method:'POST',
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ unit_id: unitId, item_id: itemId, completed })
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      // Update UI
-      const itemElement = document.querySelector(`.lesson-item[data-item-id="${itemId}"]`);
-      if (itemElement) {
-        if (completed) {
-          itemElement.classList.add('text-success');
-        } else {
-          itemElement.classList.remove('text-success');
-        }
-        
-        // Update checkbox
-        const checkbox = itemElement.querySelector('.completion-checkbox');
-        if (checkbox) {
-          checkbox.checked = completed;
-        }
+  .then(res=>res.json())
+  .then(data=>{
+    if (data && data.success){
+      const el = document.querySelector(`.lesson-item[data-item-id="${itemId}"]`);
+      if (el){
+        el.classList.toggle('text-success', completed);
+        const cb = el.querySelector('.completion-checkbox');
+        if (cb) cb.checked = completed;
       }
-      
-      // Update current item status
-      if (currentItem && currentItem.id === itemId) {
-        currentItem.completed = completed;
-      }
-      
-      showNotification(completed ? 'Item marked as completed!' : 'Item marked as incomplete.', 'success');
-      
-      // Update progress display
       updateProgressDisplay();
+      showNotification(completed ? 'Item marked as completed!' : 'Item marked as incomplete.', 'success');
     }
   })
-  .catch(error => {
-    console.error('Error:', error);
-    showNotification('Error updating progress.', 'error');
-  });
+  .catch(()=>showNotification('Error updating progress.', 'danger'));
 }
 
-// Update progress display
-function updateProgressDisplay() {
-  const completedItems = document.querySelectorAll('.lesson-item.text-success').length;
-  const totalItems = document.querySelectorAll('.lesson-item').length;
-  const progressPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-  
-  // Update progress bar
-  const progressBar = document.querySelector('.progress-bar');
-  if (progressBar) {
-    progressBar.style.width = `${progressPercentage}%`;
-    progressBar.setAttribute('aria-valuenow', progressPercentage);
+function updateProgressDisplay(){
+  const completed = document.querySelectorAll('.lesson-item.text-success').length;
+  const total = document.querySelectorAll('.lesson-item').length;
+  const pct = total ? Math.round((completed/total)*100) : 0;
+  const bar = document.querySelector('.progress-bar');
+  if (bar){
+    bar.style.width = pct + '%';
+    bar.setAttribute('aria-valuenow', pct);
   }
-  
-  // Update progress text
-  const progressText = document.querySelector('.card-footer small');
-  if (progressText) {
-    progressText.textContent = `Your Progress: ${completedItems}/${totalItems} (${progressPercentage}%)`;
+  const txt = document.querySelector('.card-footer small');
+  if (txt){
+    txt.textContent = `Your Progress: ${completed}/${total} (${pct}%)`;
   }
 }
 
-// Highlight active item in sidebar
-function highlightActiveItem(itemId) {
-  // Remove active class from all items
-  document.querySelectorAll('.lesson-item').forEach(item => {
-    item.classList.remove('active');
-    item.style.backgroundColor = '';
-  });
-  
-  // Add active class to current item
-  const activeItem = document.querySelector(`.lesson-item[data-item-id="${itemId}"]`);
-  if (activeItem) {
-    activeItem.classList.add('active');
-    activeItem.style.backgroundColor = '#e3f2fd';
-  }
+// ===== Utilities =====
+function showNotification(message, type='info'){
+  const div = document.createElement('div');
+  div.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+  div.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  div.innerHTML = `${escapeHTML(message)} <button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+  document.body.appendChild(div);
+  setTimeout(()=>div.remove(), 5000);
 }
-
-// Show notification
-function showNotification(message, type = 'info') {
-  // Create notification element
-  const notification = document.createElement('div');
-  notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-  notification.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-  
-  // Add to page
-  document.body.appendChild(notification);
-  
-  // Auto remove after 5 seconds
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.remove();
-    }
-  }, 5000);
-}
-
-// Placeholder functions for form submissions
-function submitQuiz() {
-  showNotification('Quiz submitted successfully! Your answers have been recorded.', 'success');
-}
-
-function submitAssignment() {
-  showNotification('Assignment submitted successfully! Your work has been uploaded.', 'success');
-}
+function escapeHTML(s){ return (s??'').toString().replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+async function safeJson(res){ try{ return await res.json(); } catch{ return null; } }
 </script>
 {% endblock %}
