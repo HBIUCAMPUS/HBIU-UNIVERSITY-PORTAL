@@ -1355,6 +1355,52 @@ def api_create_item(unit_id):
     except Exception as e:
         print(f"DEBUG - Database error: {e}")
         return jsonify({'ok': False, 'error': f'Database error: {str(e)}'}), 400
+
+@app.get("/api/unit/<int:unit_id>/item/<int:item_id>")
+def api_get_learning_item(unit_id, item_id):
+    """
+    Returns the full details for a lesson/quiz/assignment so the learning
+    interface can render real content on click.
+    """
+    item = db.get_learning_item(unit_id, item_id)
+    if not item:
+        return jsonify(ok=False, error="Item not found"), 404
+
+    itype = item.get("type") or "lesson"
+    data = {
+        "id": item["id"],
+        "unit_id": unit_id,
+        "chapter_id": item.get("chapter_id"),
+        "type": itype,
+        "title": item.get("title") or "Untitled",
+        "duration": item.get("duration"),
+        "attachments": db.get_learning_item_attachments(item["id"]),  # list[{name,url}]
+    }
+
+    if itype == "lesson":
+        # content_html preferred; fall back to content text
+        data["content_html"] = item.get("content_html")
+        data["content"] = item.get("content")
+
+        # if you store video URL
+        data["video_url"] = item.get("video_url")
+
+    elif itype == "quiz":
+        data["instructions"] = item.get("instructions") or ""
+        # questions may be in JSON column "content" or "questions_json"
+        questions = db.parse_quiz_questions(item)
+        data["questions"] = questions
+        data["total_points"] = item.get("total_points") or len(questions)
+        data["submit_url"] = f"/api/unit/{unit_id}/quiz/{item_id}/submit"
+
+    elif itype == "assignment":
+        data["instructions"] = item.get("instructions") or item.get("content") or ""
+        data["points"] = item.get("points") or 100
+        data["due_at"] = (item.get("due_at") or "")  # ISO string if you have it
+        data["submission_format"] = item.get("submission_format") or "Any"
+        data["submit_url"] = f"/api/unit/{unit_id}/assignment/{item_id}/submit"
+
+    return jsonify(ok=True, item=data)
 @app.route('/unit/<int:unit_id>/add_lesson')
 def add_lesson_page(unit_id):
     """Page for adding a new lesson"""
