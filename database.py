@@ -1,4 +1,3 @@
-
 import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -2190,4 +2189,3 @@ def get_attendance_status_for_student(unit_id, student_id):
         return {'open_session': session, 'has_marked': False, 'counts': {'marked': 0, 'total_registered': 0}}
     finally:
         conn.close()
-```
