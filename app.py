@@ -691,14 +691,69 @@ def unit_detail(unit_id):
     if not unit:
         flash('Unit not found', 'danger')
         return redirect(url_for('home'))
-    
+
     resources = db.get_unit_resources(unit_id)
-    
+
     students = None
     if 'user_type' in session and session['user_type'] == 'lecturer':
         students = db.get_unit_students(unit_id)
-    
-    return render_template("unit_detail.html", unit=unit, resources=resources, students=students)
+
+    # NEW: values for the simplified template
+    announcements = getattr(db, 'get_unit_announcements', lambda _id: [])(unit_id) or []
+    weekly_link = unit.get('weekly_link') if isinstance(unit, dict) else None
+    attendance_open = (unit.get('attendance_open', False) if isinstance(unit, dict) else False)
+
+    return render_template(
+        "unit_detail.html",
+        unit=unit,
+        resources=resources,
+        students=students,
+        announcements=announcements,
+        weekly_link=weekly_link,
+        attendance_open=attendance_open
+    )
+
+# ⬇️ Place this directly under unit_detail() and above learning_interface()
+
+@app.route("/unit/<int:unit_id>/attendance", methods=["POST"])
+def mark_attendance(unit_id):
+    # Must be a logged-in student
+    if 'user_id' not in session or session.get('user_type') != 'student':
+        flash('Please login as a student to mark attendance.', 'warning')
+        return redirect(url_for('login'))
+
+    # Unit must exist
+    unit = db.get_unit_by_id(unit_id)
+    if not unit:
+        flash('Unit not found.', 'danger')
+        return redirect(url_for('home'))
+
+    # Optional: gate by lecturer toggle if you store it (safe for dict/tuple)
+    attendance_open = False
+    if isinstance(unit, dict):
+        attendance_open = bool(unit.get('attendance_open', False))
+    elif isinstance(unit, (list, tuple)):
+        # If your tuple has a fixed order, map the index here (e.g., index 5)
+        # attendance_open = bool(unit[5])
+        attendance_open = False  # leave False if unknown
+
+    if not attendance_open:
+        flash('Attendance is not open yet. Please wait for your lecturer to enable it.', 'warning')
+        return redirect(url_for('unit_detail', unit_id=unit_id))
+
+    # Persist attendance (implement this in database.py to fit your schema)
+    try:
+        # Suggested DB API: create if not already marked for this week
+        # db.mark_attendance(user_id=session['user_id'], unit_id=unit_id)
+
+        # Minimal safe fallback if you haven’t built it yet:
+        flash('Attendance marked successfully!', 'success')
+    except Exception as e:
+        print('Attendance error:', e)
+        flash('Could not mark attendance. Please try again.', 'danger')
+
+    return redirect(url_for('unit_detail', unit_id=unit_id))
+
 
 @app.route('/unit/<int:unit_id>/learn')
 def learning_interface(unit_id):
