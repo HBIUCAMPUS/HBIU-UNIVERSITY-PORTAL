@@ -872,6 +872,29 @@ def learning_interface(unit_id):
         progress_percentage=progress_percentage,
         exam_unlocked=exam_unlocked
     )
+# Post an announcement
+@app.post("/lecturer/unit/<int:unit_id>/announcement")
+def lecturer_add_announcement(unit_id):
+    if 'user_id' not in session or session.get('user_type') != 'lecturer':
+        flash('Please login as lecturer', 'warning'); return redirect(url_for('login'))
+    title = (request.form.get('title') or '').strip()
+    body = (request.form.get('body') or '').strip()
+    if not body:
+        flash('Announcement body is required.', 'danger'); return redirect(url_for('upload_resource', unit_id=unit_id))
+    db.add_unit_announcement(unit_id, title, body)   # implement in database.py
+    flash('Announcement posted.', 'success')
+    return redirect(url_for('upload_resource', unit_id=unit_id))
+
+# Toggle attendance open/closed
+@app.post("/lecturer/unit/<int:unit_id>/attendance-toggle")
+def toggle_attendance(unit_id):
+    if 'user_id' not in session or session.get('user_type') != 'lecturer':
+        flash('Please login as lecturer', 'warning'); return redirect(url_for('login'))
+    open_now = bool(request.form.get('open'))
+    db.set_unit_attendance_open(unit_id, open_now)   # implement in database.py
+    flash(f'Attendance {"opened" if open_now else "closed"}.', 'success')
+    return redirect(url_for('upload_resource', unit_id=unit_id))
+
 @app.route('/update_progress', methods=['POST'])
 def update_progress():
     if 'user_id' not in session or session['user_type'] != 'student':
