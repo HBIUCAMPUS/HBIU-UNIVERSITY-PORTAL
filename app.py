@@ -18,6 +18,14 @@ import qrcode
 import io
 import base64
 from flask_mail import Mail, Message  # Make sure Message is included
+from flask import request, jsonify, session
+from database import (
+    add_announcement, get_announcements,
+    set_weekly_link, get_weekly_link,
+    create_attendance_session, close_attendance_session,
+    get_open_attendance_session, mark_attendance, get_attendance_status_for_student
+)
+
 
 app = Flask(__name__)
 
@@ -753,6 +761,129 @@ def mark_attendance(unit_id):
         flash('Could not mark attendance. Please try again.', 'danger')
 
     return redirect(url_for('unit_detail', unit_id=unit_id))
+# Create announcement (Lecturer)
+@app.post("/api/units/<int:unit_id>/announcements")
+def api_add_announcement(unit_id):
+    try:
+        # Expect lecturer to be logged in; adapt if you use a different session key
+        lecturer_id = session.get("lecturer_id")
+        if not lecturer_id:
+            return jsonify(ok=False, error="Not authorized"), 401
+
+        title = (request.form.get("title") or request.json.get("title") if request.is_json else request.form.get("title")) or ""
+        body  = (request.form.get("body")  or request.json.get("body")  if request.is_json else request.form.get("body")) or ""
+        if not body.strip():
+            return jsonify(ok=False, error="Announcement body is required"), 400
+
+        ok = add_announcement(unit_id, lecturer_id, title.strip(), body.strip())
+        return jsonify(ok=bool(ok))
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+# List announcements (Students/Lecturers)
+@app.get("/api/units/<int:unit_id>/announcements")
+def api_get_announcements(unit_id):
+    try:
+        limit = int(request.args.get("limit", 50))
+        data = get_announcements(unit_id, limit=limit)
+        return jsonify(ok=True, announcements=data)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+# Set/Update weekly class link (Lecturer)
+@app.post("/api/units/<int:unit_id>/weekly-link")
+def api_set_weekly_link(unit_id):
+    try:
+        lecturer_id = session.get("lecturer_id")
+        if not lecturer_id:
+            return jsonify(ok=False, error="Not authorized"), 401
+
+        payload = request.get_json(silent=True) or {}
+        url = (payload.get("url") or request.form.get("url") or "").strip()
+        if not url:
+            return jsonify(ok=False, error="url is required"), 400
+
+        ok = set_weekly_link(unit_id, url, lecturer_id)
+        return jsonify(ok=bool(ok))
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+# Get weekly class link (Students/Lecturers)
+@app.get("/api/units/<int:unit_id>/weekly-link")
+def api_get_weekly_link(unit_id):
+    try:
+        data = get_weekly_link(unit_id)
+        return jsonify(ok=True, link=data)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+# Open attendance window (Lecturer)
+@app.post("/api/units/<int:unit_id>/attendance/open")
+def api_open_attendance(unit_id):
+    try:
+        lecturer_id = session.get("lecturer_id")
+        if not lecturer_id:
+            return jsonify(ok=False, error="Not authorized"), 401
+
+        payload = request.get_json(silent=True) or {}
+        week_label = payload.get("week_label") or request.form.get("week_label")
+        closes_at  = payload.get("closes_at")  or request.form.get("closes_at")   # optional ISO string
+
+        session_id = create_attendance_session(unit_id, lecturer_id, week_label=week_label, closes_at=closes_at)
+        if not session_id:
+            return jsonify(ok=False, error="Could not open attendance"), 400
+        return jsonify(ok=True, session_id=session_id)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+# Close attendance window (Lecturer)
+@app.post("/api/attendance/<int:session_id>/close")
+def api_close_attendance(session_id):
+    try:
+        lecturer_id = session.get("lecturer_id")
+        if not lecturer_id:
+            return jsonify(ok=False, error="Not authorized"), 401
+
+        ok = close_attendance_session(session_id)
+        return jsonify(ok=bool(ok))
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+# Get current open attendance session for a unit (any viewer)
+@app.get("/api/units/<int:unit_id>/attendance/open")
+def api_get_open_attendance(unit_id):
+    try:
+        sess = get_open_attendance_session(unit_id)
+        return jsonify(ok=True, session=sess)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+# Student: check status + whether already marked
+@app.get("/api/units/<int:unit_id>/attendance/status")
+def api_attendance_status(unit_id):
+    try:
+        student_id = session.get("student_id")
+        if not student_id:
+            # Return open session info but no personal status if not logged as student
+            sess = get_open_attendance_session(unit_id)
+            return jsonify(ok=True, open_session=sess, has_marked=False, counts=None)
+
+        status = get_attendance_status_for_student(unit_id, student_id)
+        return jsonify(ok=True, **status)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
+# Student: mark present
+@app.post("/api/attendance/<int:session_id>/mark")
+def api_mark_attendance(session_id):
+    try:
+        student_id = session.get("student_id")
+        if not student_id:
+            return jsonify(ok=False, error="Not authorized"), 401
+
+        ok, msg = mark_attendance(session_id, student_id)
+        return jsonify(ok=bool(ok), message=msg)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e)), 500
+
 
 
 @app.route('/unit/<int:unit_id>/learn')
