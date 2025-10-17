@@ -30,20 +30,15 @@
 
             <div class="chapter-content mt-2 ms-3" style="display: none;">
               {% set chapter_items = [] %}
-              
-              {# Safe way to get items #}
-              {% if chapter is mapping %}
-                {% if chapter.items is defined %}
-                  {% if chapter.items is iterable and chapter.items is not string %}
-                    {% set chapter_items = chapter.items %}
+
+              {# Safe way to get items (avoid collision with dict.items method) #}
+                  {% set chapter_items = [] %}
+                  {% if chapter is mapping and 'items' in chapter %}
+                    {% set chapter_items = chapter['items'] if chapter['items'] is iterable and chapter['items'] is not string else [] %}
                   {% endif %}
-                {% elif chapter.get('items') is defined %}
-                  {% if chapter.get('items') is iterable and chapter.get('items') is not string %}
-                    {% set chapter_items = chapter.get('items', []) %}
-                  {% endif %}
-                {% endif %}
-              {% endif %}
+
               
+       
               {% if chapter_items and chapter_items|length > 0 %}
                 {% for item in chapter_items %}
                   {% set is_exam = false %}
