@@ -13,6 +13,145 @@ COLLEGES = [
     "HBIU college for behavioral and social science",
     "HBIU college of health, science and public health"
 ]
+def _exec(cursor, sql, params=None):
+    try:
+        cursor.execute(sql, params or ())
+    except Exception as e:
+        # Swallow benign ALTER errors in upgrade steps; re-raise others
+        raise
+
+def _exec_soft(cursor, sql):
+    try:
+        cursor.execute(sql)
+    except Exception:
+        pass
+
+def create_learning_tables():
+    """
+    Core learning/assessment tables (chapters, items, progress, exams).
+    Safe to run multiple times.
+    """
+    conn = get_db()
+    cur = conn.cursor()
+    try:
+        # Common types for both SQLite and PG
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chapters (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS chapter_items (
+                id SERIAL PRIMARY KEY,
+                chapter_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                content TEXT,
+                video_url TEXT,
+                video_file VARCHAR(255),
+                instructions TEXT,
+                duration VARCHAR(50),
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS student_progress (
+                id SERIAL PRIMARY KEY,
+                student_id INTEGER NOT NULL,
+                unit_id INTEGER NOT NULL,
+                item_id INTEGER NOT NULL,
+                completed BOOLEAN DEFAULT FALSE,
+                completed_at TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(student_id, unit_id, item_id)
+            )
+        """)
+
+        # Helpful indexes
+        _exec_soft(cur, "CREATE INDEX IF NOT EXISTS idx_chapters_unit ON chapters(unit_id, order_index)")
+        _exec_soft(cur, "CREATE INDEX IF NOT EXISTS idx_items_chapter ON chapter_items(chapter_id, order_index)")
+        _exec_soft(cur, "CREATE INDEX IF NOT EXISTS idx_progress_student_unit ON student_progress(student_id, unit_id)")
+
+        # Soft add upload columns to chapter_items
+        for ddl in [
+            "ALTER TABLE chapter_items ADD COLUMN notes_file VARCHAR(255)",
+            "ALTER TABLE chapter_items ADD COLUMN quiz_file VARCHAR(255)",
+            "ALTER TABLE chapter_items ADD COLUMN assignment_file VARCHAR(255)"
+        ]:
+            try:
+                cur.execute(ddl)
+            except Exception:
+                pass
+
+        # Exams
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS exams (
+                id SERIAL PRIMARY KEY,
+                unit_id INTEGER NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                duration_minutes INTEGER DEFAULT 60,
+                total_marks INTEGER DEFAULT 100,
+                pass_marks INTEGER DEFAULT 0,
+                unlock_after_count INTEGER DEFAULT 10,
+                is_published BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS exam_questions (
+                id SERIAL PRIMARY KEY,
+                exam_id INTEGER NOT NULL,
+                question_text TEXT NOT NULL,
+                type VARCHAR(20) DEFAULT 'mcq',
+                points INTEGER DEFAULT 1,
+                order_index INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS exam_options (
+                id SERIAL PRIMARY KEY,
+                question_id INTEGER NOT NULL,
+                option_text TEXT NOT NULL,
+                is_correct BOOLEAN DEFAULT FALSE
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS exam_attempts (
+                id SERIAL PRIMARY KEY,
+                exam_id INTEGER NOT NULL,
+                student_id INTEGER NOT NULL,
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                submitted_at TIMESTAMP,
+                score INTEGER DEFAULT 0,
+                status VARCHAR(20) DEFAULT 'in_progress'
+            )
+        """)
+        # Soft add JSON answers column to attempts
+        try:
+            cur.execute("ALTER TABLE exam_attempts ADD COLUMN answers_json TEXT")
+        except Exception:
+            pass
+
+        _exec_soft(cur, "CREATE INDEX IF NOT EXISTS idx_exam_unit ON exams(unit_id)")
+        _exec_soft(cur, "CREATE INDEX IF NOT EXISTS idx_q_exam ON exam_questions(exam_id, order_index)")
+        _exec_soft(cur, "CREATE INDEX IF NOT EXISTS idx_attempt_exam_student ON exam_attempts(exam_id, student_id)")
+
+        conn.commit()
+        print("✅ Learning & exam tables created/updated successfully")
+    except Exception as e:
+        conn.rollback()
+        print("❌ Error creating/upgrading learning tables:", e)
+    finally:
+        conn.close()
+
 
 def get_db():
     """Get database connection - supports both SQLite and PostgreSQL"""
