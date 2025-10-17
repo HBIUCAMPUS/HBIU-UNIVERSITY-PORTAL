@@ -1,8 +1,4 @@
-Got you. Below is a drop-in replacement for your `database.py` that **keeps every existing function and behavior intact** and **adds** the missing pieces for announcements + weekly class link + attendance, and fixes the `exam_attempts.answers_json` column mismatch. It stays compatible with both PostgreSQL (Render) and SQLite (local), using the same style you already have (best-effort `IF NOT EXISTS` and `ALTER TABLE` guarded by `try/except`).
 
-Paste this entire file over your current `database.py`.
-
-```python
 import os
 import sqlite3
 from werkzeug.security import generate_password_hash, check_password_hash
